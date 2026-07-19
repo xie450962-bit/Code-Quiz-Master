@@ -136,64 +136,66 @@ export function TypingGame() {
     : 100;
 
   return (
-    <div className="min-h-[100dvh] bg-[#050508] text-slate-200 flex flex-col items-center relative overflow-hidden font-sans selection:bg-cyan-500/20 w-full">
-      {/* Background Effects */}
-      <div className="absolute inset-0 pointer-events-none bg-[linear-gradient(rgba(255,255,255,0.015)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.015)_1px,transparent_1px)] bg-[size:40px_40px]" />
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-cyan-900/10 rounded-full blur-[120px] pointer-events-none" />
+    <div className="min-h-[100dvh] bg-[#F8F9FA] text-[#333333] flex flex-col items-center relative overflow-hidden font-['Noto_Sans'] selection:bg-[#F13A3C]/20 w-full">
+      <style dangerouslySetInnerHTML={{__html: `
+        @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700&family=Noto+Sans:wght@400;500&display=swap');
+      `}} />
       
       {/* Progress Bar (Top) */}
       {(gameState === 'playing' || gameState === 'ready') && (
-        <div className="absolute top-0 left-0 w-full h-1 bg-white/5">
+        <div className="absolute top-0 left-0 w-full h-[2px] bg-[#E1E3E4]">
           <div 
-            className="h-full bg-cyan-400 transition-all duration-1000 ease-linear shadow-[0_0_15px_rgba(34,211,238,0.6)]" 
+            className="h-full bg-[#F13A3C] transition-all duration-1000 ease-linear" 
             style={{ width: `${(timeLeft / 60) * 100}%` }} 
           />
         </div>
       )}
 
       {/* Header */}
-      <header className="w-full max-w-5xl flex items-center justify-between p-8 z-10">
-        <div className="flex items-center gap-3 text-cyan-400 font-bold text-2xl tracking-widest uppercase">
-          <Keyboard className="w-8 h-8" />
-          <span>NeonType</span>
+      <header className="w-full bg-white border-b border-[#E1E3E4] flex justify-center z-10">
+        <div className="w-full max-w-[1200px] flex items-center justify-between px-8 py-6">
+          <div className="flex items-center gap-3 text-[#333333] font-['Montserrat'] font-bold text-2xl uppercase tracking-tight">
+            <Keyboard className="w-8 h-8 text-[#F13A3C]" />
+            <span>NeonType</span>
+          </div>
+          
+          {/* Live Stats */}
+          <AnimatePresence>
+            {(gameState === 'playing' || gameState === 'ready') && (
+              <motion.div 
+                initial={{ opacity: 0, y: -20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                className="flex gap-8 md:gap-12"
+              >
+                <div className="flex flex-col items-end">
+                  <span className="text-[12px] text-[#656464] font-['Montserrat'] font-semibold uppercase mb-1 flex items-center gap-2">
+                    <Activity className="w-3 h-3 text-[#333333]" /> WPM
+                  </span>
+                  <span className="text-3xl font-['Montserrat'] font-bold text-[#333333] leading-none">{wpm}</span>
+                </div>
+                <div className="flex flex-col items-end">
+                  <span className="text-[12px] text-[#656464] font-['Montserrat'] font-semibold uppercase mb-1 flex items-center gap-2">
+                    <Zap className="w-3 h-3 text-[#333333]" /> ACC
+                  </span>
+                  <span className="text-3xl font-['Montserrat'] font-bold text-[#333333] leading-none">{accuracy}%</span>
+                </div>
+                <div className="flex flex-col items-end">
+                  <span className="text-[12px] text-[#656464] font-['Montserrat'] font-semibold uppercase mb-1 flex items-center gap-2">
+                    <Clock className="w-3 h-3 text-[#333333]" /> Time
+                  </span>
+                  <span className={`text-3xl font-['Montserrat'] font-bold leading-none ${timeLeft <= 10 && gameState === 'playing' ? 'text-[#F13A3C]' : 'text-[#333333]'}`}>
+                    00:{timeLeft.toString().padStart(2, '0')}
+                  </span>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
-        
-        {/* Live Stats */}
-        <AnimatePresence>
-          {(gameState === 'playing' || gameState === 'ready') && (
-            <motion.div 
-              initial={{ opacity: 0, y: -20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              className="flex gap-8 md:gap-12 font-mono"
-            >
-              <div className="flex flex-col items-end">
-                <span className="text-[10px] text-slate-500 tracking-[0.2em] uppercase mb-1 flex items-center gap-2">
-                  <Activity className="w-3 h-3" /> WPM
-                </span>
-                <span className="text-3xl font-black text-white leading-none">{wpm}</span>
-              </div>
-              <div className="flex flex-col items-end">
-                <span className="text-[10px] text-slate-500 tracking-[0.2em] uppercase mb-1 flex items-center gap-2">
-                  <Zap className="w-3 h-3" /> ACC
-                </span>
-                <span className="text-3xl font-black text-white leading-none">{accuracy}%</span>
-              </div>
-              <div className="flex flex-col items-end">
-                <span className="text-[10px] text-slate-500 tracking-[0.2em] uppercase mb-1 flex items-center gap-2">
-                  <Clock className="w-3 h-3" /> Time
-                </span>
-                <span className={`text-3xl font-black leading-none ${timeLeft <= 10 && gameState === 'playing' ? 'text-red-400 animate-pulse' : 'text-cyan-400'}`}>
-                  00:{timeLeft.toString().padStart(2, '0')}
-                </span>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
       </header>
 
       {/* Main Content Area */}
-      <main className="w-full max-w-5xl flex-1 flex flex-col justify-center relative z-10 px-8 pb-16">
+      <main className="w-full max-w-[1200px] flex-1 flex flex-col justify-center relative z-10 px-8 pb-16 pt-8">
         
         {gameState === 'intro' && (
           <motion.div 
@@ -202,11 +204,11 @@ export function TypingGame() {
             className="flex-1 flex flex-col items-center justify-center gap-12"
           >
             <div className="flex flex-col items-center gap-6 text-center">
-              <Keyboard className="w-32 h-32 text-cyan-400 drop-shadow-[0_0_30px_rgba(34,211,238,0.4)]" strokeWidth={1} />
-              <h1 className="text-5xl md:text-8xl font-black tracking-[0.1em] text-white drop-shadow-[0_0_20px_rgba(34,211,238,0.3)]">
+              <Keyboard className="w-24 h-24 text-[#F13A3C]" strokeWidth={1.5} />
+              <h1 className="text-5xl md:text-7xl font-['Montserrat'] font-bold text-[#333333] tracking-tight">
                 NEONTYPE
               </h1>
-              <p className="text-slate-400 font-mono tracking-widest uppercase text-sm">
+              <p className="text-[#656464] font-['Noto_Sans'] text-lg">
                 Initialize your sequence. Prove your speed.
               </p>
             </div>
@@ -215,11 +217,10 @@ export function TypingGame() {
                 setGameState('ready');
                 setTimeout(() => inputRef.current?.focus(), 100);
               }}
-              className="group relative px-10 py-5 bg-cyan-950/30 text-cyan-300 border border-cyan-500/30 hover:border-cyan-400/80 hover:bg-cyan-900/40 hover:text-cyan-100 transition-all duration-300 uppercase tracking-[0.3em] font-bold flex items-center gap-4 overflow-hidden"
+              className="px-8 py-4 bg-[#F13A3C] hover:bg-[#c9181a] text-white rounded-[4px] transition-colors duration-200 font-['Montserrat'] font-semibold text-[14px] uppercase tracking-wider flex items-center gap-3"
             >
-              <div className="absolute inset-0 w-full h-full bg-cyan-400/10 scale-x-0 group-hover:scale-x-100 origin-left transition-transform duration-300 ease-out" />
-              <Play className="w-5 h-5 fill-current relative z-10" />
-              <span className="relative z-10">System Start</span>
+              <Play className="w-5 h-5 fill-current" />
+              <span>System Start</span>
             </button>
           </motion.div>
         )}
@@ -248,38 +249,37 @@ export function TypingGame() {
             {/* Focus Overlay */}
             {!isFocused && (
               <div 
-                className="absolute inset-0 z-20 bg-[#050508]/60 backdrop-blur-sm flex items-center justify-center cursor-pointer rounded-xl"
+                className="absolute inset-0 z-20 bg-white/80 backdrop-blur-[2px] flex items-center justify-center cursor-pointer rounded-[4px]"
                 onClick={() => inputRef.current?.focus()}
               >
-                <div className="px-8 py-4 bg-cyan-950/80 text-cyan-300 border border-cyan-500/30 rounded-lg flex items-center gap-3 animate-pulse shadow-[0_0_30px_rgba(34,211,238,0.15)]">
-                  <Target className="w-5 h-5" />
-                  <span className="font-mono uppercase tracking-widest font-bold">Click to focus</span>
+                <div className="px-6 py-3 bg-white text-[#333333] border border-[#E1E3E4] rounded-[4px] flex items-center gap-3 shadow-[0_4px_20px_rgba(0,0,0,0.05)]">
+                  <Target className="w-5 h-5 text-[#F13A3C]" />
+                  <span className="font-['Montserrat'] uppercase font-semibold text-sm tracking-wider">Click to focus</span>
                 </div>
               </div>
             )}
 
             {/* Text Area */}
             <div 
-              className="relative w-full h-[280px] overflow-hidden"
-              style={{ maskImage: 'linear-gradient(to bottom, transparent, black 15%, black 85%, transparent)' }}
+              className="relative w-full h-[320px] bg-white border border-[#E1E3E4] rounded-[4px] p-8 overflow-hidden"
               onClick={() => inputRef.current?.focus()}
             >
               <div 
                 ref={containerRef}
-                className="absolute inset-0 overflow-y-auto pb-32 pt-16 px-4 [&::-webkit-scrollbar]:hidden"
+                className="absolute inset-0 overflow-y-auto p-8 [&::-webkit-scrollbar]:hidden"
                 style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
               >
-                <div className="text-[26px] md:text-[32px] font-mono leading-[1.8] tracking-tight break-words select-none">
+                <div className="text-[24px] md:text-[28px] font-mono leading-[1.8] break-words select-none">
                   {text.split('').map((char, index) => {
                     const isTyped = index < input.length;
                     const isCorrect = isTyped && input[index] === char;
                     const isError = isTyped && input[index] !== char;
                     const isCurrent = index === input.length;
 
-                    let colorClass = "text-slate-600"; 
-                    if (isCorrect) colorClass = "text-cyan-400 drop-shadow-[0_0_8px_rgba(34,211,238,0.3)]";
-                    if (isError) colorClass = "text-red-400 bg-red-400/10 border-b-2 border-red-500"; 
-                    if (isCurrent) colorClass = "text-slate-300"; 
+                    let colorClass = "text-[#333333]/40"; 
+                    if (isCorrect) colorClass = "text-[#F13A3C]";
+                    if (isError) colorClass = "text-[#F13A3C] bg-[#F13A3C]/10 border-b-2 border-[#F13A3C]"; 
+                    if (isCurrent) colorClass = "text-[#333333]"; 
 
                     return (
                       <span 
@@ -288,7 +288,7 @@ export function TypingGame() {
                         className={`relative transition-colors duration-75 ${colorClass}`}
                       >
                         {isCurrent && isFocused && (
-                          <span className="absolute -left-[2px] top-[15%] bottom-[15%] w-[3px] bg-cyan-400 animate-pulse shadow-[0_0_10px_rgba(34,211,238,0.8)] z-10" />
+                          <span className="absolute -left-[1px] top-[15%] bottom-[15%] w-[3px] bg-[#F13A3C] animate-pulse z-10" />
                         )}
                         {char}
                       </span>
@@ -297,7 +297,7 @@ export function TypingGame() {
                   {/* Caret when at the very end of text */}
                   {input.length === text.length && isFocused && (
                     <span className="relative" ref={activeCharRef}>
-                      <span className="absolute -left-[2px] top-[15%] bottom-[15%] w-[3px] bg-cyan-400 animate-pulse shadow-[0_0_10px_rgba(34,211,238,0.8)] z-10" />
+                      <span className="absolute -left-[1px] top-[15%] bottom-[15%] w-[3px] bg-[#F13A3C] animate-pulse z-10" />
                     </span>
                   )}
                 </div>
@@ -306,7 +306,7 @@ export function TypingGame() {
             
             {/* Helper message below text */}
             {gameState === 'ready' && (
-              <div className="absolute bottom-0 w-full text-center text-slate-500 font-mono uppercase tracking-widest text-xs animate-pulse">
+              <div className="absolute -bottom-8 w-full text-center text-[#656464] font-['Montserrat'] font-medium uppercase tracking-wider text-[12px] animate-pulse">
                 Start typing to begin
               </div>
             )}
@@ -317,52 +317,43 @@ export function TypingGame() {
           <motion.div 
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="flex-1 flex flex-col items-center justify-center w-full"
+            className="flex-1 flex flex-col items-center justify-center w-full pt-12"
           >
-            <div className="bg-[#0A0A0F] border border-cyan-900/30 p-8 md:p-12 w-full max-w-3xl relative group shadow-[0_0_50px_rgba(0,0,0,0.5)]">
-              {/* Corner accents */}
-              <div className="absolute top-0 left-0 w-4 h-4 border-t-2 border-l-2 border-cyan-500/50" />
-              <div className="absolute top-0 right-0 w-4 h-4 border-t-2 border-r-2 border-cyan-500/50" />
-              <div className="absolute bottom-0 left-0 w-4 h-4 border-b-2 border-l-2 border-cyan-500/50" />
-              <div className="absolute bottom-0 right-0 w-4 h-4 border-b-2 border-r-2 border-cyan-500/50" />
-
-              <div className="flex items-center justify-center gap-5 mb-12 md:mb-16">
-                <Trophy className="w-10 h-10 md:w-12 md:h-12 text-cyan-400 drop-shadow-[0_0_15px_rgba(34,211,238,0.5)]" />
-                <h2 className="text-3xl md:text-5xl font-black tracking-widest uppercase text-white text-center">Session Complete</h2>
+            <div className="bg-white border border-[#E1E3E4] p-12 w-full max-w-3xl rounded-[4px]">
+              <div className="flex items-center justify-center gap-4 mb-12">
+                <Trophy className="w-10 h-10 text-[#F13A3C]" />
+                <h2 className="text-3xl md:text-4xl font-['Montserrat'] font-bold text-[#333333] text-center tracking-tight uppercase">Session Complete</h2>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8 mb-12 md:mb-16">
-                <div className="flex flex-col items-center p-8 bg-black/60 rounded-sm border border-white/5 relative overflow-hidden group-hover:border-cyan-900/50 transition-colors">
-                  <div className="absolute top-0 left-0 w-full h-1 bg-cyan-500/20" />
-                  <span className="text-xs text-slate-500 font-mono tracking-[0.2em] uppercase mb-4">Speed</span>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+                <div className="flex flex-col items-center p-8 bg-[#F8F9FA] rounded-[4px] border border-[#E1E3E4]">
+                  <span className="text-[12px] text-[#656464] font-['Montserrat'] font-semibold uppercase mb-4 tracking-wider">Speed</span>
                   <div className="flex items-baseline gap-2">
-                    <span className="text-5xl md:text-6xl font-black text-cyan-400 font-mono">{wpm}</span>
-                    <span className="text-sm text-cyan-400/50 font-mono uppercase">wpm</span>
+                    <span className="text-5xl font-['Montserrat'] font-bold text-[#F13A3C]">{wpm}</span>
+                    <span className="text-sm text-[#656464] font-['Montserrat'] font-semibold uppercase">wpm</span>
                   </div>
                 </div>
                 
-                <div className="flex flex-col items-center p-8 bg-black/60 rounded-sm border border-white/5 relative overflow-hidden group-hover:border-white/10 transition-colors">
-                  <div className="absolute top-0 left-0 w-full h-1 bg-white/10" />
-                  <span className="text-xs text-slate-500 font-mono tracking-[0.2em] uppercase mb-4">Accuracy</span>
+                <div className="flex flex-col items-center p-8 bg-[#F8F9FA] rounded-[4px] border border-[#E1E3E4]">
+                  <span className="text-[12px] text-[#656464] font-['Montserrat'] font-semibold uppercase mb-4 tracking-wider">Accuracy</span>
                   <div className="flex items-baseline gap-2">
-                    <span className="text-5xl md:text-6xl font-black text-white font-mono">{accuracy}</span>
-                    <span className="text-sm text-white/50 font-mono">%</span>
+                    <span className="text-5xl font-['Montserrat'] font-bold text-[#333333]">{accuracy}</span>
+                    <span className="text-sm text-[#656464] font-['Montserrat'] font-semibold">%</span>
                   </div>
                 </div>
                 
-                <div className="flex flex-col items-center p-8 bg-black/60 rounded-sm border border-white/5 relative overflow-hidden group-hover:border-red-900/30 transition-colors">
-                  <div className="absolute top-0 left-0 w-full h-1 bg-red-500/20" />
-                  <span className="text-xs text-slate-500 font-mono tracking-[0.2em] uppercase mb-4">Errors</span>
-                  <span className="text-5xl md:text-6xl font-black text-red-400 font-mono">{totalErrors}</span>
+                <div className="flex flex-col items-center p-8 bg-[#F8F9FA] rounded-[4px] border border-[#E1E3E4]">
+                  <span className="text-[12px] text-[#656464] font-['Montserrat'] font-semibold uppercase mb-4 tracking-wider">Errors</span>
+                  <span className="text-5xl font-['Montserrat'] font-bold text-[#333333]">{totalErrors}</span>
                 </div>
               </div>
 
               <div className="flex justify-center">
                 <button
                   onClick={restart}
-                  className="px-8 py-4 md:px-10 md:py-5 bg-white/5 hover:bg-cyan-950/40 text-white border border-white/10 hover:border-cyan-500/50 transition-all uppercase tracking-widest font-bold flex items-center gap-4 hover:text-cyan-300 group/btn"
+                  className="px-8 py-4 bg-[#F13A3C] hover:bg-[#c9181a] text-white rounded-[4px] transition-colors duration-200 font-['Montserrat'] font-semibold text-[14px] uppercase tracking-wider flex items-center gap-3"
                 >
-                  <RefreshCw className="w-5 h-5 group-hover/btn:rotate-180 transition-transform duration-500" />
+                  <RefreshCw className="w-5 h-5" />
                   Initialize New Sequence
                 </button>
               </div>
@@ -376,8 +367,8 @@ export function TypingGame() {
         <motion.div
           initial={{ opacity: 1 }}
           animate={{ opacity: 0 }}
-          transition={{ duration: 1, ease: "easeOut" }}
-          className="fixed inset-0 bg-cyan-400 mix-blend-overlay pointer-events-none z-50"
+          transition={{ duration: 0.5, ease: "easeOut" }}
+          className="fixed inset-0 bg-white pointer-events-none z-50"
         />
       )}
     </div>

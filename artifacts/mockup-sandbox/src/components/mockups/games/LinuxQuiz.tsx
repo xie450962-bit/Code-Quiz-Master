@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { Terminal, Check, X } from "lucide-react";
 
 const QUESTIONS = [
   {
@@ -147,7 +148,7 @@ function formatText(text: string) {
       return (
         <span
           key={i}
-          className="text-[#4ade80] bg-[#022c16] px-1.5 py-0.5 rounded-sm font-bold border border-[#065f46]"
+          className="text-[#333333] bg-[#E1E3E4] px-1.5 py-0.5 rounded-sm font-mono text-sm"
         >
           {part}
         </span>
@@ -155,10 +156,6 @@ function formatText(text: string) {
     }
     return <span key={i}>{part}</span>;
   });
-}
-
-function Cursor() {
-  return <span className="inline-block w-2.5 h-5 bg-[#22c55e] ml-1 -mb-1 animate-pulse shadow-[0_0_8px_#22c55e]"></span>;
 }
 
 export function LinuxQuiz() {
@@ -228,14 +225,22 @@ export function LinuxQuiz() {
 
   if (booting) {
     return (
-      <div className="min-h-[100dvh] bg-[#050505] text-[#22c55e] font-mono p-6 selection:bg-[#22c55e] selection:text-black">
-        <div className="max-w-3xl mx-auto space-y-2 text-sm md:text-base">
-          {bootLogs.map((log, i) => (
-            <div key={i} className="opacity-80">
-              <span className="text-[#16a34a]">[ OK ]</span> {log}
+      <div className="min-h-[100dvh] bg-[#F8F9FA] text-[#333333] font-['Noto_Sans']">
+                {/* Progress bar at top */}
+        <div className="fixed top-0 left-0 h-[2px] bg-[#F13A3C] transition-all duration-300" style={{ width: `${(bootLogs.length / 6) * 100}%` }} />
+        
+        <div className="max-w-[1200px] mx-auto p-8 pt-24">
+          <h1 className="font-['Montserrat'] font-bold text-2xl mb-8 text-[#333333]">System Initializing...</h1>
+          <div className="space-y-3">
+            {bootLogs.map((log, i) => (
+              <div key={i} className="flex items-center text-sm md:text-base text-[#656464]">
+                <span className="w-1.5 h-1.5 rounded-full bg-[#E1E3E4] mr-3"></span> {log}
+              </div>
+            ))}
+            <div className="mt-4 flex items-center">
+               <span className="w-1.5 h-1.5 rounded-full bg-[#F13A3C] mr-3 animate-pulse"></span>
             </div>
-          ))}
-          <div className="mt-4"><Cursor /></div>
+          </div>
         </div>
       </div>
     );
@@ -245,45 +250,48 @@ export function LinuxQuiz() {
   const percentage = Math.round((score / QUESTIONS.length) * 100);
 
   return (
-    <div className="min-h-[100dvh] bg-[#050505] text-[#22c55e] font-mono relative overflow-x-hidden selection:bg-[#22c55e] selection:text-black pb-20">
-      {/* CRT Scanline Overlay */}
-      <div className="bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.25)_50%),linear-gradient(90deg,rgba(255,0,0,0.06),rgba(0,255,0,0.02),rgba(0,0,255,0.06))] bg-[length:100%_4px,3px_100%] pointer-events-none fixed inset-0 z-50 opacity-20" />
-      
-      <div className="max-w-3xl mx-auto p-4 md:p-8 relative z-10">
+    <div className="min-h-[100dvh] bg-[#F8F9FA] text-[#333333] font-['Noto_Sans'] pb-20 pt-12 selection:bg-[#F13A3C]/20 selection:text-[#333333]">
+      <style>
+        {`@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700&family=Noto+Sans:wght@400;500;700&display=swap');`}
+      </style>
+      <div className="max-w-[1200px] mx-auto px-4 md:px-8">
         
         {/* Header */}
-        <div className="border-b-2 border-[#166534] pb-4 mb-8 flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
-          <div>
-            <h1 className="text-xl md:text-2xl font-bold tracking-tight text-[#4ade80] drop-shadow-[0_0_8px_rgba(74,222,128,0.5)]">
-              root@linux-quiz:~# <span className="text-[#22c55e] font-normal">./start_test.sh</span>
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
+          <div className="flex items-center gap-3">
+            <Terminal className="text-[#F13A3C] w-6 h-6" />
+            <h1 className="text-xl md:text-2xl font-bold tracking-tight text-[#333333] font-['Montserrat']">
+              Linux Mastery
             </h1>
-            <p className="text-[#16a34a] mt-2 text-sm">
-              PID 94821 - Session active
-            </p>
           </div>
-          <div className="text-left md:text-right border border-[#166534] p-2 bg-[#022c16]/30">
-            <div className="text-[#4ade80] text-sm md:text-base">
-              SCORE: [{score}/{QUESTIONS.length}]
-            </div>
-            <div className="text-[#16a34a] text-xs mt-1">
-              PROGRESS: {Math.round(((currentQuestionIndex + (isAnswered ? 1 : 0)) / QUESTIONS.length) * 100)}%
+          <div className="flex items-center gap-4 font-['Montserrat'] font-semibold">
+            <div className="text-sm bg-white border border-[#E1E3E4] px-4 py-2 rounded-sm text-[#333333]">
+              SCORE: {score}/{QUESTIONS.length}
             </div>
           </div>
         </div>
 
+        {/* Progress Bar */}
+        <div className="w-full bg-[#E1E3E4] h-[2px] mb-8 rounded-full overflow-hidden">
+          <div 
+            className="h-full bg-[#F13A3C] transition-all duration-300"
+            style={{ width: `${Math.round(((currentQuestionIndex + (isAnswered ? 1 : 0)) / QUESTIONS.length) * 100)}%` }}
+          />
+        </div>
+
         {!quizFinished ? (
-          <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+          <div className="bg-white border border-[#E1E3E4] rounded-sm p-6 md:p-8 shadow-none animate-in fade-in slide-in-from-bottom-4 duration-500">
             {/* Question Display */}
             <div className="mb-8">
-              <h2 className="text-xl md:text-2xl font-bold text-[#4ade80] leading-snug drop-shadow-[0_0_5px_rgba(74,222,128,0.3)]">
-                <span className="text-[#16a34a] mr-2">Q{currentQuestionIndex + 1}:</span>
+              <h2 className="text-xl md:text-2xl font-bold text-[#333333] leading-snug font-['Montserrat']">
+                <span className="text-[#F13A3C] mr-2">Q{currentQuestionIndex + 1}:</span>
                 {q.question}
               </h2>
               
               {q.commandSnippet && (
-                <div className="mt-4 p-4 bg-black border border-[#166534] rounded-sm text-[#4ade80] shadow-[inset_0_0_10px_rgba(0,0,0,0.5)] flex items-center">
-                  <span className="text-[#16a34a] mr-3 select-none">$</span>
-                  <code className="text-lg">{q.commandSnippet}</code>
+                <div className="mt-6 p-4 bg-[#1e1e1e] rounded-sm text-white font-mono text-sm shadow-none flex items-center overflow-x-auto">
+                  <span className="text-[#656464] mr-3 select-none">$</span>
+                  <code>{q.commandSnippet}</code>
                 </div>
               )}
             </div>
@@ -295,18 +303,18 @@ export function LinuxQuiz() {
                 const isCorrect = isAnswered && idx === q.correctAnswerIndex;
                 const isWrong = isAnswered && isSelected && idx !== q.correctAnswerIndex;
                 
-                let btnClass = "w-full text-left p-4 border-2 transition-all duration-200 focus:outline-none flex items-start group ";
+                let btnClass = "w-full text-left p-4 border rounded-sm transition-all duration-200 focus:outline-none flex items-center group bg-white font-['Noto_Sans'] ";
                 
                 if (!isAnswered) {
-                  btnClass += "border-[#166534] text-[#22c55e] hover:bg-[#166534]/30 hover:border-[#4ade80] hover:shadow-[0_0_10px_rgba(34,197,94,0.3)] cursor-pointer";
+                  btnClass += "border-[#E1E3E4] text-[#333333] hover:border-[#F13A3C] hover:bg-[#F13A3C]/5 cursor-pointer";
                 } else {
                   btnClass += "cursor-default ";
                   if (isCorrect) {
-                    btnClass += "bg-[#22c55e] text-black border-[#4ade80] font-bold shadow-[0_0_15px_rgba(74,222,128,0.5)]";
+                    btnClass += "border-[#E1E3E4] border-l-4 border-l-[#F13A3C] font-bold text-[#333333]";
                   } else if (isWrong) {
-                    btnClass += "bg-[#7f1d1d] text-[#fca5a5] border-[#ef4444] shadow-[0_0_15px_rgba(239,68,68,0.4)]";
+                    btnClass += "border-[#F13A3C] text-[#5c403d] opacity-80 bg-[#F13A3C]/5";
                   } else {
-                    btnClass += "border-[#166534]/40 text-[#16a34a]/50";
+                    btnClass += "border-[#E1E3E4] text-[#656464] opacity-60";
                   }
                 }
 
@@ -317,10 +325,12 @@ export function LinuxQuiz() {
                     onClick={() => handleOptionClick(idx)}
                     className={btnClass}
                   >
-                    <span className={`mr-4 ${isCorrect && isAnswered ? 'text-black' : isWrong ? 'text-[#fca5a5]' : 'text-[#16a34a] group-hover:text-[#4ade80]'}`}>
+                    <span className={`mr-4 font-['Montserrat'] font-semibold ${isCorrect && isAnswered ? 'text-[#F13A3C]' : isWrong ? 'text-[#F13A3C]' : 'text-[#F13A3C]'}`}>
                       [{idx + 1}]
                     </span> 
-                    <span className="flex-1 mt-0.5">{opt}</span>
+                    <span className="flex-1">{opt}</span>
+                    {isAnswered && isCorrect && <Check className="w-5 h-5 text-[#F13A3C] ml-3 flex-shrink-0" />}
+                    {isAnswered && isWrong && <X className="w-5 h-5 text-[#F13A3C] ml-3 flex-shrink-0" />}
                   </button>
                 );
               })}
@@ -328,12 +338,12 @@ export function LinuxQuiz() {
 
             {/* Feedback & Next */}
             {isAnswered && (
-              <div className="animate-in fade-in zoom-in-95 duration-300">
-                <div className={`p-5 border-l-4 ${selectedOptionIndex === q.correctAnswerIndex ? 'border-[#4ade80] bg-[#022c16]/50' : 'border-[#ef4444] bg-[#450a0a]/50'}`}>
-                  <h3 className={`text-xl font-bold mb-3 flex items-center ${selectedOptionIndex === q.correctAnswerIndex ? 'text-[#4ade80]' : 'text-[#ef4444]'}`}>
-                    {selectedOptionIndex === q.correctAnswerIndex ? '> [SUCCESS] Valid command executed.' : '> [FATAL] Command execution failed.'}
+              <div className="animate-in fade-in zoom-in-95 duration-300 mt-8">
+                <div className={`p-5 bg-[#F8F9FA] border-l-4 ${selectedOptionIndex === q.correctAnswerIndex ? 'border-l-[#F13A3C]' : 'border-l-[#E1E3E4]'}`}>
+                  <h3 className={`text-lg font-bold mb-2 font-['Montserrat'] text-[#333333]`}>
+                    {selectedOptionIndex === q.correctAnswerIndex ? 'Correct.' : 'Incorrect.'}
                   </h3>
-                  <div className="text-[#22c55e] leading-relaxed text-sm md:text-base">
+                  <div className="text-[#333333] leading-relaxed text-sm md:text-base font-['Noto_Sans']">
                     {formatText(q.explanation)}
                   </div>
                 </div>
@@ -341,69 +351,56 @@ export function LinuxQuiz() {
                 <div className="mt-8 flex justify-end">
                   <button 
                     onClick={handleNext}
-                    className="px-6 py-3 border border-[#4ade80] text-[#4ade80] hover:bg-[#4ade80] hover:text-black transition-colors uppercase tracking-widest font-bold flex items-center shadow-[0_0_10px_rgba(74,222,128,0.2)] focus:outline-none focus:ring-2 focus:ring-[#4ade80] focus:ring-offset-2 focus:ring-offset-black"
+                    className="px-6 py-3 bg-[#F13A3C] text-white rounded-sm hover:bg-[#c9181a] transition-colors font-['Montserrat'] font-semibold flex items-center shadow-none focus:outline-none focus:ring-2 focus:ring-[#F13A3C] focus:ring-offset-2"
                   >
-                    {currentQuestionIndex < QUESTIONS.length - 1 ? './continue.sh' : './results.sh'}
-                    <span className="ml-2 font-normal text-xl leading-none">_</span>
+                    {currentQuestionIndex < QUESTIONS.length - 1 ? 'Next Question →' : 'View Results →'}
                   </button>
                 </div>
               </div>
             )}
           </div>
         ) : (
-          <div className="animate-in fade-in slide-in-from-bottom-8 duration-700 mt-12">
-            <h2 className="text-2xl md:text-3xl text-[#4ade80] font-bold mb-6 drop-shadow-[0_0_10px_rgba(74,222,128,0.6)]">
-              <span className="text-[#16a34a] mr-2">root@linux-quiz:~#</span> ./grade_exam
+          <div className="animate-in fade-in slide-in-from-bottom-8 duration-700 bg-white border border-[#E1E3E4] rounded-sm p-6 md:p-8">
+            <h2 className="text-2xl md:text-3xl font-bold mb-8 text-[#333333] font-['Montserrat']">
+              Assessment Results
             </h2>
             
-            <div className="p-6 md:p-8 border border-[#166534] bg-[#022c16]/30 mb-8 rounded-sm font-mono relative overflow-hidden">
-              {/* Decorative block */}
-              <div className="absolute top-0 right-0 p-4 opacity-20 pointer-events-none">
-                <pre className="text-xs leading-none">
-                  {`
-  ___
- (o,o)
- (   )
- -"-"-
-                  `}
-                </pre>
+            <div className="space-y-6">
+              <div className="flex justify-between border-b border-[#E1E3E4] pb-4">
+                <span className="text-[#656464] font-['Noto_Sans']">User execution context:</span>
+                <span className="text-[#333333] font-['Montserrat'] font-semibold">root</span>
               </div>
-
-              <div className="space-y-4 relative z-10">
-                <div className="flex justify-between border-b border-[#166534]/50 pb-2">
-                  <span className="text-[#16a34a]">User execution context:</span>
-                  <span className="text-[#4ade80]">root</span>
+              <div className="flex justify-between border-b border-[#E1E3E4] pb-4">
+                <span className="text-[#656464] font-['Noto_Sans']">Queries processed:</span>
+                <span className="text-[#333333] font-['Montserrat'] font-semibold">{QUESTIONS.length}</span>
+              </div>
+              <div className="flex justify-between border-b border-[#E1E3E4] pb-4 items-center">
+                <span className="text-[#656464] font-['Noto_Sans']">Successful executions:</span>
+                <div className="text-right">
+                  <span className="text-3xl font-bold text-[#F13A3C] font-['Montserrat'] mr-2">{score}</span>
+                  <span className="text-[#656464] font-['Noto_Sans']">({percentage}%)</span>
                 </div>
-                <div className="flex justify-between border-b border-[#166534]/50 pb-2">
-                  <span className="text-[#16a34a]">Queries processed:</span>
-                  <span className="text-[#4ade80]">{QUESTIONS.length}</span>
-                </div>
-                <div className="flex justify-between border-b border-[#166534]/50 pb-2 items-center">
-                  <span className="text-[#16a34a]">Successful executions:</span>
-                  <div className="text-right">
-                    <span className="text-3xl font-bold text-[#4ade80] drop-shadow-[0_0_8px_rgba(74,222,128,0.5)] mr-2">{score}</span>
-                    <span className="text-[#22c55e]">({percentage}%)</span>
-                  </div>
-                </div>
-                
-                <div className="pt-6">
-                  <div className="text-[#16a34a] mb-2 uppercase tracking-widest text-sm">System Assigned Rank</div>
-                  <div className="text-3xl md:text-5xl font-black text-[#4ade80] tracking-tight drop-shadow-[0_0_15px_rgba(74,222,128,0.6)]">
-                    {percentage === 100 ? "ROOT WIZARD" : 
-                     percentage >= 80 ? "SYSADMIN" : 
-                     percentage >= 60 ? "SHELL APPRENTICE" : 
-                     "USER SPACE DWELLER"}
-                  </div>
+              </div>
+              
+              <div className="pt-6">
+                <div className="text-[#656464] mb-2 uppercase tracking-widest text-xs font-['Montserrat'] font-semibold">System Assigned Rank</div>
+                <div className="text-3xl md:text-4xl font-bold text-[#F13A3C] tracking-tight font-['Montserrat']">
+                  {percentage === 100 ? "ROOT WIZARD" : 
+                   percentage >= 80 ? "SYSADMIN" : 
+                   percentage >= 60 ? "SHELL APPRENTICE" : 
+                   "USER SPACE DWELLER"}
                 </div>
               </div>
             </div>
             
-            <button 
-              onClick={handleRestart}
-              className="px-6 py-3 border border-[#4ade80] text-[#4ade80] hover:bg-[#4ade80] hover:text-black transition-colors uppercase tracking-widest font-bold focus:outline-none focus:ring-2 focus:ring-[#4ade80] focus:ring-offset-2 focus:ring-offset-black flex items-center"
-            >
-              ./restart_session.sh <Cursor />
-            </button>
+            <div className="mt-10">
+              <button 
+                onClick={handleRestart}
+                className="px-6 py-3 bg-[#F13A3C] text-white rounded-sm hover:bg-[#c9181a] transition-colors font-['Montserrat'] font-semibold flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-[#F13A3C] focus:ring-offset-2"
+              >
+                Restart Session
+              </button>
+            </div>
           </div>
         )}
       </div>
