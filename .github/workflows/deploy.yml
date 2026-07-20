@@ -25,14 +25,14 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Build API
+        run: pnpm --filter @workspace/api-server run build
+
       - name: Deploy to Cloudflare Workers
-        uses: cloudflare/wrangler-action@v3
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          workingDirectory: artifacts/api-server
-          # "deploy" is the default command; listed here for clarity.
-          command: deploy
+        run: pnpm --filter @workspace/api-server exec wrangler deploy
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
   # ── Frontend → Cloudflare Pages ───────────────────────────────────────────
   deploy-frontend:
@@ -57,11 +57,7 @@ jobs:
         run: pnpm --filter @workspace/mockup-sandbox run build
 
       - name: Deploy to Cloudflare Pages
-        uses: cloudflare/wrangler-action@v3
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          workingDirectory: artifacts/mockup-sandbox
-          # Replace "mockup-sandbox" with your Cloudflare Pages project name
-          # if you chose a different name when creating it in the dashboard.
-          command: pages deploy dist --project-name=mockup-sandbox
+        run: pnpm --filter @workspace/mockup-sandbox exec wrangler pages deploy dist --project-name=mockup-sandbox
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
