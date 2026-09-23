@@ -11,6 +11,11 @@ import {
 
 import { modules as discoveredModules } from "./.generated/mockup-components";
 import {
+  calculateQuizResult,
+  QUIZ_QUESTIONS,
+  type QuizResult,
+} from "./quizGame";
+import {
   applyTypingInput,
   calculateTypingResult,
   formatRemainingTime,
@@ -37,15 +42,6 @@ type User = {
   role: string;
   initials: string;
   color: string;
-};
-
-type GameResult = {
-  primaryLabel: string;
-  primaryValue: string;
-  secondaryLabel: string;
-  secondaryValue: string;
-  accuracy: number;
-  summary: string;
 };
 
 const USERS: User[] = [
@@ -476,81 +472,20 @@ function TypingScreen({
   );
 }
 
-const QUIZ_QUESTIONS: Record<"sql" | "linux", Array<{
-  question: string;
-  options: string[];
-  correct: number;
-}>> = {
-  sql: [
-    {
-      question: "ユーザー一覧を取得するSQLとして正しいものはどれですか？",
-      options: ["SELECT * FROM users;", "SELECT users FROM *;", "GET * FROM users;", "READ users;"],
-      correct: 0,
-    },
-    {
-      question: "結果を名前の昇順に並べ替える句はどれですか？",
-      options: ["SORT name UP", "ORDER BY name ASC", "GROUP name ASC", "ARRANGE BY name"],
-      correct: 1,
-    },
-    {
-      question: "重複を除いた値を取得するキーワードはどれですか？",
-      options: ["UNIQUE ROW", "DISTINCT", "ONLY", "DEDUP"],
-      correct: 1,
-    },
-    {
-      question: "条件に一致する行だけを絞り込む句はどれですか？",
-      options: ["HAVING ONLY", "WHERE", "FILTER BY", "MATCH"],
-      correct: 1,
-    },
-    {
-      question: "テーブルの行数を数えるSQLとして正しいものはどれですか？",
-      options: ["SELECT ROWS(*) FROM users;", "SELECT COUNT(*) FROM users;", "COUNT users;", "SELECT TOTAL users;"],
-      correct: 1,
-    },
-  ],
-  linux: [
-    {
-      question: "現在のディレクトリを表示するLinuxコマンドはどれですか？",
-      options: ["pwd", "cd", "ls", "mkdir"],
-      correct: 0,
-    },
-    {
-      question: "ファイルやディレクトリの一覧を表示するコマンドはどれですか？",
-      options: ["list", "ls", "dir-show", "files"],
-      correct: 1,
-    },
-    {
-      question: "ファイルに実行権限を追加するコマンドはどれですか？",
-      options: ["chown +x script.sh", "chmod +x script.sh", "exec script.sh", "sudo script.sh"],
-      correct: 1,
-    },
-    {
-      question: "ファイルの末尾20行を表示するコマンドはどれですか？",
-      options: ["head -n 20 file.log", "tail -n 20 file.log", "last 20 file.log", "read --tail file.log"],
-      correct: 1,
-    },
-    {
-      question: "コマンドの標準出力を別のコマンドへ渡す記号はどれですか？",
-      options: [">", "|", "&&&", "->"],
-      correct: 1,
-    },
-  ],
-};
-
 function QuizScreen({
   game,
   onResult,
   onHome,
 }: {
   game: "sql" | "linux";
-  onResult: (result: GameResult) => void;
+  onResult: (result: QuizResult) => void;
   onHome: () => void;
 }) {
   const isSql = game === "sql";
   const questions = QUIZ_QUESTIONS[game];
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
-  const [score, setScore] = useState(0);
+  const [answers, setAnswers] = useState<number[]>([]);
   const currentQuestion = questions[currentQuestionIndex];
   const hasAnswered = selectedAnswer !== null;
 
@@ -561,24 +496,14 @@ function QuizScreen({
 
   const handleNext = () => {
     if (selectedAnswer === null) return;
-    const nextScore = score + (selectedAnswer === currentQuestion.correct ? 1 : 0);
+    const nextAnswers = [...answers, selectedAnswer];
 
     if (currentQuestionIndex === questions.length - 1) {
-      const accuracy = Math.round((nextScore / questions.length) * 100);
-      onResult({
-        primaryLabel: "スコア",
-        primaryValue: `${nextScore}/${questions.length}`,
-        secondaryLabel: "正解数",
-        secondaryValue: `${nextScore}問`,
-        accuracy,
-        summary: accuracy === 100
-          ? "全問正解です。すばらしい結果です。"
-          : "回答を完了しました。間違えた問題も復習してみましょう。",
-      });
+      onResult(calculateQuizResult(questions, nextAnswers));
       return;
     }
 
-    setScore(nextScore);
+    setAnswers(nextAnswers);
     setCurrentQuestionIndex((index) => index + 1);
     setSelectedAnswer(null);
   };
@@ -588,17 +513,23 @@ function QuizScreen({
       <div className="game-heading">
         <span className="eyebrow">{isSql ? "SQL QUIZ" : "LINUX QUIZ"}</span>
         <h1>{isSql ? "SQLの基礎を確認しましょう。" : "Linuxコマンドを確認しましょう。"}</h1>
-        <p>全5問の選択式クイズです。回答すると、その場で正誤を確認できます。</p>
+        <p>全10問の選択式クイズです。回答後に正誤を確認して次の問題へ進みます。</p>
       </div>
       <section className="quiz-card">
         <div className="quiz-card-top">
-          <span>QUESTION {String(currentQuestionIndex + 1).padStart(2, "0")} / {questions.length}</span>
-          <span className="quiz-status">
+          <span>問題 {currentQuestionIndex + 1} / {questions.length}</span>
+          <span className="quiz-status" aria-live="polite">
             {hasAnswered
               ? selectedAnswer === currentQuestion.correct ? "正解" : "不正解"
               : "未回答"}
           </span>
         </div>
+        <progress
+          className="quiz-progress"
+          aria-label="クイズの進捗"
+          max={questions.length}
+          value={currentQuestionIndex + 1}
+        />
         <h2>{currentQuestion.question}</h2>
         <div className="quiz-options">
           {currentQuestion.options.map((option, index) => {
@@ -609,6 +540,7 @@ function QuizScreen({
               className={`quiz-option ${hasAnswered && isCorrect ? "quiz-option-correct" : ""} ${hasAnswered && isSelected && !isCorrect ? "quiz-option-wrong" : ""}`}
               key={option}
               type="button"
+              aria-pressed={isSelected}
               onClick={() => handleAnswer(index)}
               disabled={hasAnswered}
             >
@@ -619,7 +551,7 @@ function QuizScreen({
           })}
         </div>
         <div className="game-action-row">
-          <span className="helper-text">
+          <span className="helper-text" aria-live="polite">
             {hasAnswered
               ? selectedAnswer === currentQuestion.correct ? "正解です。" : "正しい選択肢を確認しましょう。"
               : "選択肢を1つ選んでください"}
@@ -640,14 +572,14 @@ function ResultScreen({
   onHome,
 }: {
   game: Game;
-  result: GameResult | TypingResult;
+  result: QuizResult | TypingResult;
   onAgain: () => void;
   onHome: () => void;
 }) {
   const item = GAMES.find((candidate) => candidate.id === game)!;
   const typingResult = "wpm" in result ? result : null;
-  const gameResult = "primaryValue" in result ? result : null;
-  const metrics = typingResult
+  const quizResult = "correctCount" in result ? result : null;
+  const metrics: string[][] = typingResult
     ? [
         ["WPM", String(typingResult.wpm), "一分あたりの入力速度"],
         ["正確率", String(typingResult.accuracy) + "%", "正しい文字の割合"],
@@ -655,9 +587,10 @@ function ResultScreen({
         ["スコア", String(typingResult.score) + "点", "速度・正確率・ミス数から計算"],
       ]
     : [
-        ["今回", gameResult!.primaryValue, gameResult!.primaryLabel],
-        ["正確率", String(gameResult!.accuracy) + "%", "今回の正解率"],
-        [gameResult!.secondaryLabel, gameResult!.secondaryValue, "今回の結果"],
+        ["今回の正解数", `${quizResult!.correctCount} / ${quizResult!.totalQuestions}`, "正解した問題数"],
+        ["正確率", `${quizResult!.accuracy}%`, "今回の正解率"],
+        ["前回", "—", "保存機能はPhase 4で実装"],
+        ["自己ベスト", "—", "保存機能はPhase 4で実装"],
       ];
 
   return (
@@ -666,10 +599,10 @@ function ResultScreen({
         <span className={"result-check result-check-" + item.color}>✓</span>
         <span className="eyebrow">{item.label.toUpperCase()} RESULT</span>
         <h1>おつかれさまでした。</h1>
-        <p>{typingResult ? "今回のタイピング結果です。" : gameResult!.summary}</p>
+        <p>{typingResult ? "今回のタイピング結果です。" : `全${quizResult!.totalQuestions}問の回答が完了しました。`}</p>
       </div>
       <section className="result-card">
-        <div className={typingResult ? "result-metrics result-metrics-typing" : "result-metrics"}>
+        <div className={typingResult ? "result-metrics result-metrics-typing" : "result-metrics result-metrics-quiz"}>
           {metrics.map(([label, value, note]) => (
             <div className="result-metric" key={label}>
               <span>{label}</span>
@@ -698,7 +631,7 @@ function ResultScreen({
         )}
         <div className="result-notice">
           <span>i</span>
-          <p>{typingResult ? "前回と自己ベストの保存は Phase 4 で実装します。" : "この結果は今回のプレイに基づいて計算されています。"}</p>
+          <p>{typingResult ? "前回と自己ベストの保存は Phase 4 で実装します。" : "正解数と正確率を表示しています。前回と自己ベストの保存はPhase 4で実装します。"}</p>
         </div>
         <div className="result-actions">
           <Button variant="secondary" onClick={onHome}>HOMEへ戻る</Button>
@@ -712,7 +645,7 @@ function ResultScreen({
 function LearningApp() {
   const [screen, setScreen] = useState<Screen>("user-selection");
   const [user, setUser] = useState<User | null>(null);
-  const [result, setResult] = useState<GameResult | TypingResult | null>(null);
+  const [result, setResult] = useState<QuizResult | TypingResult | null>(null);
 
   const chooseUser = (selected: User) => {
     setUser(selected);
@@ -725,7 +658,7 @@ function LearningApp() {
     setResult(null);
     setScreen(game);
   };
-  const showResult = (game: Game, gameResult: GameResult | TypingResult) => {
+  const showResult = (game: Game, gameResult: QuizResult | TypingResult) => {
     setResult(gameResult);
     setScreen((game + "-result") as Screen);
   };

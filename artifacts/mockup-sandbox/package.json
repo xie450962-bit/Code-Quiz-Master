@@ -8,6 +8,7 @@
     "build": "vite build",
     "preview": "vite preview",
     "test:typing": "node --experimental-strip-types --test src/typingGame.test.ts",
+    "test:quiz": "node --experimental-strip-types --test src/quizGame.test.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "devDependencies": {
