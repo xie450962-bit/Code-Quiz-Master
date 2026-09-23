@@ -1,13 +1,24 @@
 import {
+  useCallback,
   useEffect,
   useRef,
   useState,
   type ChangeEvent,
+  type CompositionEvent,
   type ComponentType,
   type ReactNode,
 } from "react";
 
 import { modules as discoveredModules } from "./.generated/mockup-components";
+import {
+  applyTypingInput,
+  calculateTypingResult,
+  formatRemainingTime,
+  getRemainingSeconds,
+  TYPING_DURATION_SECONDS,
+  TYPING_PROMPTS,
+  type TypingResult,
+} from "./typingGame";
 
 type ModuleMap = Record<string, () => Promise<Record<string, unknown>>>;
 type Game = "typing" | "sql" | "linux";
@@ -312,134 +323,153 @@ function GameLayout({
   );
 }
 
-const TYPING_PROMPT = 'const greeting = "Hello, new engineer!";';
-const TYPING_TIME_LIMIT = 30;
-
 function TypingScreen({
   onResult,
   onHome,
 }: {
-  onResult: (result: GameResult) => void;
+  onResult: (result: TypingResult) => void;
   onHome: () => void;
 }) {
-  const [input, setInput] = useState("");
-  const [gameState, setGameState] = useState<"ready" | "playing">("ready");
-  const [timeLeft, setTimeLeft] = useState(TYPING_TIME_LIMIT);
-  const [totalTyped, setTotalTyped] = useState(0);
-  const [totalErrors, setTotalErrors] = useState(0);
-  const startedAtRef = useRef<number | null>(null);
-  const statsRef = useRef({ input: "", totalTyped: 0, totalErrors: 0 });
+  const [startedAt] = useState(() => Date.now());
+  const [remainingSeconds, setRemainingSeconds] = useState(TYPING_DURATION_SECONDS);
+  const [promptIndex, setPromptIndex] = useState(0);
+  const [completedPrompts, setCompletedPrompts] = useState(0);
+  const [acceptedInput, setAcceptedInput] = useState("");
+  const [correctCharacters, setCorrectCharacters] = useState(0);
+  const [mistakes, setMistakes] = useState(0);
+  const correctCharactersRef = useRef(0);
+  const mistakesRef = useRef(0);
+  const acceptedInputRef = useRef("");
+  const inputElementRef = useRef<HTMLInputElement>(null);
+  const isComposingRef = useRef(false);
+  const compositionValueRef = useRef<string | null>(null);
+  const isFinishedRef = useRef(false);
+  const onResultRef = useRef(onResult);
+  onResultRef.current = onResult;
 
-  statsRef.current = { input, totalTyped, totalErrors };
+  const currentPrompt = TYPING_PROMPTS[promptIndex]!;
+  const deadline = startedAt + TYPING_DURATION_SECONDS * 1000;
 
-  const finishGame = (
-    finalInput = statsRef.current.input,
-    finalTotalTyped = statsRef.current.totalTyped,
-    finalTotalErrors = statsRef.current.totalErrors,
-  ) => {
-    const startedAt = startedAtRef.current;
-    const elapsedSeconds = startedAt
-      ? Math.max(1, Math.min(TYPING_TIME_LIMIT, Math.round((Date.now() - startedAt) / 1000)))
-      : 0;
-    const correctChars = finalInput.split("").filter((char, index) => char === TYPING_PROMPT[index]).length;
-    const accuracy = finalTotalTyped > 0
-      ? Math.max(0, Math.round(((finalTotalTyped - finalTotalErrors) / finalTotalTyped) * 100))
-      : 0;
-    const wpm = elapsedSeconds > 0
-      ? Math.round((correctChars / 5) / (elapsedSeconds / 60))
-      : 0;
+  const finishGame = useCallback((finishedAt: number) => {
+    if (isFinishedRef.current) return;
+    isFinishedRef.current = true;
+    onResultRef.current(
+      calculateTypingResult(
+        correctCharactersRef.current,
+        mistakesRef.current,
+        finishedAt - startedAt,
+      ),
+    );
+  }, [startedAt]);
 
-    onResult({
-      primaryLabel: "WPM",
-      primaryValue: String(wpm),
-      secondaryLabel: "経過時間",
-      secondaryValue: `${elapsedSeconds}秒`,
-      accuracy,
-      summary: finalInput.length === TYPING_PROMPT.length
-        ? "入力を最後まで完了しました。"
-        : "制限時間内に入力した内容を集計しました。",
-    });
-  };
+  const updateTimer = useCallback(() => {
+    const remaining = getRemainingSeconds(startedAt, Date.now());
+    setRemainingSeconds(remaining);
+    if (remaining === 0) finishGame(deadline);
+  }, [deadline, finishGame, startedAt]);
 
   useEffect(() => {
-    if (gameState !== "playing") return undefined;
-
-    const timer = window.setInterval(() => {
-      setTimeLeft((current) => {
-        if (current <= 1) {
-          window.clearInterval(timer);
-          finishGame();
-          return 0;
-        }
-        return current - 1;
-      });
-    }, 1000);
-
-    return () => window.clearInterval(timer);
-  }, [gameState]);
-
-  const handleInput = (event: ChangeEvent<HTMLTextAreaElement>) => {
-    if (gameState === "ready") {
-      startedAtRef.current = Date.now();
-      setGameState("playing");
-    }
-
-    const nextInput = event.target.value.slice(0, TYPING_PROMPT.length);
-    const addedText = nextInput.length > input.length ? nextInput.slice(input.length) : "";
-    const nextTotalTyped = totalTyped + addedText.length;
-    const addedErrors = [...addedText].filter(
-      (char, offset) => char !== TYPING_PROMPT[input.length + offset],
-    ).length;
-    const nextTotalErrors = totalErrors + addedErrors;
-
-    setInput(nextInput);
-    setTotalTyped(nextTotalTyped);
-    setTotalErrors(nextTotalErrors);
-    statsRef.current = {
-      input: nextInput,
-      totalTyped: nextTotalTyped,
-      totalErrors: nextTotalErrors,
+    const interval = window.setInterval(updateTimer, 200);
+    const deadlineTimer = window.setTimeout(updateTimer, TYPING_DURATION_SECONDS * 1000);
+    return () => {
+      window.clearInterval(interval);
+      window.clearTimeout(deadlineTimer);
     };
+  }, [updateTimer]);
 
-    if (nextInput.length === TYPING_PROMPT.length) {
-      finishGame(nextInput, nextTotalTyped, nextTotalErrors);
+  const acceptCandidate = (candidateText: string) => {
+    if (isFinishedRef.current) return;
+    if (Date.now() >= deadline) {
+      setRemainingSeconds(0);
+      finishGame(deadline);
+      return;
     }
+
+    const inputResult = applyTypingInput(
+      currentPrompt.text,
+      acceptedInputRef.current,
+      candidateText,
+    );
+    acceptedInputRef.current = inputResult.acceptedText;
+    setAcceptedInput(inputResult.acceptedText);
+    if (inputElementRef.current) {
+      inputElementRef.current.value = inputResult.acceptedText;
+    }
+
+    correctCharactersRef.current += inputResult.correctCharacters;
+    mistakesRef.current += inputResult.mistakes;
+    setCorrectCharacters(correctCharactersRef.current);
+    setMistakes(mistakesRef.current);
+
+    if (inputResult.completed) {
+      acceptedInputRef.current = "";
+      setAcceptedInput("");
+      if (inputElementRef.current) inputElementRef.current.value = "";
+      setPromptIndex((index) => (index + 1) % TYPING_PROMPTS.length);
+      setCompletedPrompts((count) => count + 1);
+    }
+  };
+
+  const handleInputChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const candidate = event.currentTarget.value;
+    if (isComposingRef.current) return;
+    if (compositionValueRef.current === candidate) {
+      compositionValueRef.current = null;
+      return;
+    }
+    compositionValueRef.current = null;
+    acceptCandidate(candidate);
+  };
+
+  const handleCompositionEnd = (event: CompositionEvent<HTMLInputElement>) => {
+    isComposingRef.current = false;
+    const candidate = event.currentTarget.value;
+    compositionValueRef.current = candidate;
+    acceptCandidate(candidate);
   };
 
   return (
     <GameLayout game="typing" onHome={onHome}>
       <div className="game-heading">
         <span className="eyebrow">TYPING PRACTICE</span>
-        <h1>コードを正確に入力しましょう。</h1>
-        <p>30秒以内に表示されたコードを入力してください。入力中に正確率を計算します。</p>
+        <h1>表示された文章を入力しましょう。</h1>
+        <p>正しい文字を入力すると、次のお題へ進みます。制限時間は三分です。</p>
       </div>
       <section className="typing-card">
         <div className="typing-card-meta">
-          <span>QUESTION 01</span>
-          <span>{gameState === "playing" ? `残り ${timeLeft}秒` : "入力すると開始"}</span>
+          <span>残り時間</span>
+          <strong className="typing-timer" role="timer">{formatRemainingTime(remainingSeconds)}</strong>
         </div>
-        <p className="typing-prompt">{TYPING_PROMPT}</p>
-        <textarea
+        <div className="typing-prompt-meta">
+          <span>{currentPrompt.genre}</span>
+          <span>完了したお題：{completedPrompts}</span>
+        </div>
+        <p className="typing-prompt">{currentPrompt.text}</p>
+        <input
+          ref={inputElementRef}
+          type="text"
+          lang="ja"
           className="typing-input"
-          aria-label="タイピング入力欄"
-          value={input}
-          onChange={handleInput}
-          placeholder="ここに入力してください..."
+          aria-label="表示された文章の入力欄"
+          placeholder="日本語で入力してください"
+          onChange={handleInputChange}
+          onCompositionStart={() => { isComposingRef.current = true; }}
+          onCompositionEnd={handleCompositionEnd}
+          onKeyDown={(event) => {
+            if (isComposingRef.current) return;
+            if (["Backspace", "Delete", "ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) {
+              event.preventDefault();
+            }
+          }}
           autoFocus
-          disabled={timeLeft === 0}
         />
         <div className="game-action-row">
           <span className="helper-text">
-            {gameState === "playing"
-              ? `入力済み ${input.length} / ${TYPING_PROMPT.length}文字`
-              : "最初のキー入力でタイマーが始まります"}
+            入力：{Array.from(acceptedInput).length} / {Array.from(currentPrompt.text).length}文字
+            {"　"}ミス：{mistakes}
+            {"　"}正しい文字：{correctCharacters}
           </span>
-          <Button
-            onClick={() => finishGame()}
-            disabled={input.length === 0 || timeLeft === 0}
-          >
-            結果を見る →
-          </Button>
+          <span className="helper-text">三分が経過すると結果へ移動します</span>
         </div>
       </section>
     </GameLayout>
@@ -610,26 +640,37 @@ function ResultScreen({
   onHome,
 }: {
   game: Game;
-  result: GameResult;
+  result: GameResult | TypingResult;
   onAgain: () => void;
   onHome: () => void;
 }) {
   const item = GAMES.find((candidate) => candidate.id === game)!;
+  const typingResult = "wpm" in result ? result : null;
+  const gameResult = "primaryValue" in result ? result : null;
+  const metrics = typingResult
+    ? [
+        ["WPM", String(typingResult.wpm), "一分あたりの入力速度"],
+        ["正確率", String(typingResult.accuracy) + "%", "正しい文字の割合"],
+        ["ミス数", String(typingResult.mistakes), "誤入力した文字数"],
+        ["スコア", String(typingResult.score) + "点", "速度・正確率・ミス数から計算"],
+      ]
+    : [
+        ["今回", gameResult!.primaryValue, gameResult!.primaryLabel],
+        ["正確率", String(gameResult!.accuracy) + "%", "今回の正解率"],
+        [gameResult!.secondaryLabel, gameResult!.secondaryValue, "今回の結果"],
+      ];
+
   return (
     <GameLayout game={game} onHome={onHome}>
       <div className="result-heading">
-        <span className={`result-check result-check-${item.color}`}>✓</span>
+        <span className={"result-check result-check-" + item.color}>✓</span>
         <span className="eyebrow">{item.label.toUpperCase()} RESULT</span>
         <h1>おつかれさまでした。</h1>
-        <p>{result.summary}</p>
+        <p>{typingResult ? "今回のタイピング結果です。" : gameResult!.summary}</p>
       </div>
       <section className="result-card">
-        <div className="result-metrics">
-          {[
-            ["今回", result.primaryValue, result.primaryLabel],
-            ["正確率", `${result.accuracy}%`, "今回の正解率"],
-            [result.secondaryLabel, result.secondaryValue, "今回の結果"],
-          ].map(([label, value, note]) => (
+        <div className={typingResult ? "result-metrics result-metrics-typing" : "result-metrics"}>
+          {metrics.map(([label, value, note]) => (
             <div className="result-metric" key={label}>
               <span>{label}</span>
               <strong>{value}</strong>
@@ -637,9 +678,27 @@ function ResultScreen({
             </div>
           ))}
         </div>
+        {typingResult && (
+          <div className="result-comparison">
+            <h2>スコア比較</h2>
+            <div className="result-comparison-metrics">
+              {[
+                ["今回", String(typingResult.score) + "点", "今回のスコア"],
+                ["前回", "—", "記録はまだありません"],
+                ["自己ベスト", "—", "記録はまだありません"],
+              ].map(([label, value, note]) => (
+                <div className="result-metric" key={label}>
+                  <span>{label}</span>
+                  <strong>{value}</strong>
+                  <small>{note}</small>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
         <div className="result-notice">
           <span>i</span>
-          <p>この結果は今回のプレイに基づいて計算されています。</p>
+          <p>{typingResult ? "前回と自己ベストの保存は Phase 4 で実装します。" : "この結果は今回のプレイに基づいて計算されています。"}</p>
         </div>
         <div className="result-actions">
           <Button variant="secondary" onClick={onHome}>HOMEへ戻る</Button>
@@ -653,7 +712,7 @@ function ResultScreen({
 function LearningApp() {
   const [screen, setScreen] = useState<Screen>("user-selection");
   const [user, setUser] = useState<User | null>(null);
-  const [result, setResult] = useState<GameResult | null>(null);
+  const [result, setResult] = useState<GameResult | TypingResult | null>(null);
 
   const chooseUser = (selected: User) => {
     setUser(selected);
@@ -666,16 +725,16 @@ function LearningApp() {
     setResult(null);
     setScreen(game);
   };
-  const showResult = (game: Game, gameResult: GameResult) => {
+  const showResult = (game: Game, gameResult: GameResult | TypingResult) => {
     setResult(gameResult);
-    setScreen(`${game}-result` as Screen);
+    setScreen((game + "-result") as Screen);
   };
   const resultGame = screen.endsWith("-result") ? screen.replace("-result", "") as Game : null;
 
   if (screen === "home") {
     return <Home user={user} onChangeUser={() => setScreen("user-selection")} onStart={startGame} />;
   }
-  if (screen === "typing") return <TypingScreen onResult={(gameResult) => showResult("typing", gameResult)} onHome={() => setScreen("home")} />;
+  if (screen === "typing") return <TypingScreen onResult={(typingResult) => showResult("typing", typingResult)} onHome={() => setScreen("home")} />;
   if (screen === "sql") return <QuizScreen game="sql" onResult={(gameResult) => showResult("sql", gameResult)} onHome={() => setScreen("home")} />;
   if (screen === "linux") return <QuizScreen game="linux" onResult={(gameResult) => showResult("linux", gameResult)} onHome={() => setScreen("home")} />;
   if (resultGame && result) return <ResultScreen game={resultGame} result={result} onAgain={() => startGame(resultGame)} onHome={() => setScreen("home")} />;
