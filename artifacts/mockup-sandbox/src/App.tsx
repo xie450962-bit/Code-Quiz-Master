@@ -1,4 +1,11 @@
-import { useEffect, useState, type ComponentType, type ReactNode } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type ChangeEvent,
+  type ComponentType,
+  type ReactNode,
+} from "react";
 
 import { modules as discoveredModules } from "./.generated/mockup-components";
 
@@ -19,6 +26,15 @@ type User = {
   role: string;
   initials: string;
   color: string;
+};
+
+type GameResult = {
+  primaryLabel: string;
+  primaryValue: string;
+  secondaryLabel: string;
+  secondaryValue: string;
+  accuracy: number;
+  summary: string;
 };
 
 const USERS: User[] = [
@@ -189,7 +205,7 @@ function UserSelection({ onSelect }: { onSelect: (user: User) => void }) {
             </button>
           ))}
         </div>
-        <p className="muted-note">※ Phase 1では仮のユーザー選択を使用します</p>
+        <p className="muted-note">※ デモ用のユーザー選択を使用します</p>
       </div>
     </main>
   );
@@ -272,7 +288,7 @@ function GameHeader({
         <span className="progress-divider">/</span>
         <span>Practice</span>
       </div>
-      <span className="phase-label">PHASE 1</span>
+      <span className="phase-label">PRACTICE</span>
     </div>
   );
 }
@@ -296,39 +312,200 @@ function GameLayout({
   );
 }
 
-function TypingScreen({ onResult, onHome }: { onResult: () => void; onHome: () => void }) {
+const TYPING_PROMPT = 'const greeting = "Hello, new engineer!";';
+const TYPING_TIME_LIMIT = 30;
+
+function TypingScreen({
+  onResult,
+  onHome,
+}: {
+  onResult: (result: GameResult) => void;
+  onHome: () => void;
+}) {
+  const [input, setInput] = useState("");
+  const [gameState, setGameState] = useState<"ready" | "playing">("ready");
+  const [timeLeft, setTimeLeft] = useState(TYPING_TIME_LIMIT);
+  const [totalTyped, setTotalTyped] = useState(0);
+  const [totalErrors, setTotalErrors] = useState(0);
+  const startedAtRef = useRef<number | null>(null);
+  const statsRef = useRef({ input: "", totalTyped: 0, totalErrors: 0 });
+
+  statsRef.current = { input, totalTyped, totalErrors };
+
+  const finishGame = (
+    finalInput = statsRef.current.input,
+    finalTotalTyped = statsRef.current.totalTyped,
+    finalTotalErrors = statsRef.current.totalErrors,
+  ) => {
+    const startedAt = startedAtRef.current;
+    const elapsedSeconds = startedAt
+      ? Math.max(1, Math.min(TYPING_TIME_LIMIT, Math.round((Date.now() - startedAt) / 1000)))
+      : 0;
+    const correctChars = finalInput.split("").filter((char, index) => char === TYPING_PROMPT[index]).length;
+    const accuracy = finalTotalTyped > 0
+      ? Math.max(0, Math.round(((finalTotalTyped - finalTotalErrors) / finalTotalTyped) * 100))
+      : 0;
+    const wpm = elapsedSeconds > 0
+      ? Math.round((correctChars / 5) / (elapsedSeconds / 60))
+      : 0;
+
+    onResult({
+      primaryLabel: "WPM",
+      primaryValue: String(wpm),
+      secondaryLabel: "経過時間",
+      secondaryValue: `${elapsedSeconds}秒`,
+      accuracy,
+      summary: finalInput.length === TYPING_PROMPT.length
+        ? "入力を最後まで完了しました。"
+        : "制限時間内に入力した内容を集計しました。",
+    });
+  };
+
+  useEffect(() => {
+    if (gameState !== "playing") return undefined;
+
+    const timer = window.setInterval(() => {
+      setTimeLeft((current) => {
+        if (current <= 1) {
+          window.clearInterval(timer);
+          finishGame();
+          return 0;
+        }
+        return current - 1;
+      });
+    }, 1000);
+
+    return () => window.clearInterval(timer);
+  }, [gameState]);
+
+  const handleInput = (event: ChangeEvent<HTMLTextAreaElement>) => {
+    if (gameState === "ready") {
+      startedAtRef.current = Date.now();
+      setGameState("playing");
+    }
+
+    const nextInput = event.target.value.slice(0, TYPING_PROMPT.length);
+    const addedText = nextInput.length > input.length ? nextInput.slice(input.length) : "";
+    const nextTotalTyped = totalTyped + addedText.length;
+    const addedErrors = [...addedText].filter(
+      (char, offset) => char !== TYPING_PROMPT[input.length + offset],
+    ).length;
+    const nextTotalErrors = totalErrors + addedErrors;
+
+    setInput(nextInput);
+    setTotalTyped(nextTotalTyped);
+    setTotalErrors(nextTotalErrors);
+    statsRef.current = {
+      input: nextInput,
+      totalTyped: nextTotalTyped,
+      totalErrors: nextTotalErrors,
+    };
+
+    if (nextInput.length === TYPING_PROMPT.length) {
+      finishGame(nextInput, nextTotalTyped, nextTotalErrors);
+    }
+  };
+
   return (
     <GameLayout game="typing" onHome={onHome}>
       <div className="game-heading">
         <span className="eyebrow">TYPING PRACTICE</span>
         <h1>コードを正確に入力しましょう。</h1>
-        <p>表示された文章を入力する練習です。タイマーと判定は次のPhaseで実装します。</p>
+        <p>30秒以内に表示されたコードを入力してください。入力中に正確率を計算します。</p>
       </div>
       <section className="typing-card">
-        <div className="typing-card-meta"><span>QUESTION 01</span><span>準備中</span></div>
-        <p className="typing-prompt">
-          const greeting = &quot;Hello, new engineer!&quot;;
-        </p>
+        <div className="typing-card-meta">
+          <span>QUESTION 01</span>
+          <span>{gameState === "playing" ? `残り ${timeLeft}秒` : "入力すると開始"}</span>
+        </div>
+        <p className="typing-prompt">{TYPING_PROMPT}</p>
         <textarea
           className="typing-input"
           aria-label="タイピング入力欄"
+          value={input}
+          onChange={handleInput}
           placeholder="ここに入力してください..."
+          autoFocus
+          disabled={timeLeft === 0}
         />
         <div className="game-action-row">
-          <span className="helper-text">入力内容はまだ判定されません</span>
-          <Button onClick={onResult}>結果を見る →</Button>
+          <span className="helper-text">
+            {gameState === "playing"
+              ? `入力済み ${input.length} / ${TYPING_PROMPT.length}文字`
+              : "最初のキー入力でタイマーが始まります"}
+          </span>
+          <Button
+            onClick={() => finishGame()}
+            disabled={input.length === 0 || timeLeft === 0}
+          >
+            結果を見る →
+          </Button>
         </div>
       </section>
     </GameLayout>
   );
 }
 
-const QUIZ_OPTIONS = [
-  "SELECT * FROM users;",
-  "SELECT users FROM *;",
-  "GET * FROM users;",
-  "READ users;",
-];
+const QUIZ_QUESTIONS: Record<"sql" | "linux", Array<{
+  question: string;
+  options: string[];
+  correct: number;
+}>> = {
+  sql: [
+    {
+      question: "ユーザー一覧を取得するSQLとして正しいものはどれですか？",
+      options: ["SELECT * FROM users;", "SELECT users FROM *;", "GET * FROM users;", "READ users;"],
+      correct: 0,
+    },
+    {
+      question: "結果を名前の昇順に並べ替える句はどれですか？",
+      options: ["SORT name UP", "ORDER BY name ASC", "GROUP name ASC", "ARRANGE BY name"],
+      correct: 1,
+    },
+    {
+      question: "重複を除いた値を取得するキーワードはどれですか？",
+      options: ["UNIQUE ROW", "DISTINCT", "ONLY", "DEDUP"],
+      correct: 1,
+    },
+    {
+      question: "条件に一致する行だけを絞り込む句はどれですか？",
+      options: ["HAVING ONLY", "WHERE", "FILTER BY", "MATCH"],
+      correct: 1,
+    },
+    {
+      question: "テーブルの行数を数えるSQLとして正しいものはどれですか？",
+      options: ["SELECT ROWS(*) FROM users;", "SELECT COUNT(*) FROM users;", "COUNT users;", "SELECT TOTAL users;"],
+      correct: 1,
+    },
+  ],
+  linux: [
+    {
+      question: "現在のディレクトリを表示するLinuxコマンドはどれですか？",
+      options: ["pwd", "cd", "ls", "mkdir"],
+      correct: 0,
+    },
+    {
+      question: "ファイルやディレクトリの一覧を表示するコマンドはどれですか？",
+      options: ["list", "ls", "dir-show", "files"],
+      correct: 1,
+    },
+    {
+      question: "ファイルに実行権限を追加するコマンドはどれですか？",
+      options: ["chown +x script.sh", "chmod +x script.sh", "exec script.sh", "sudo script.sh"],
+      correct: 1,
+    },
+    {
+      question: "ファイルの末尾20行を表示するコマンドはどれですか？",
+      options: ["head -n 20 file.log", "tail -n 20 file.log", "last 20 file.log", "read --tail file.log"],
+      correct: 1,
+    },
+    {
+      question: "コマンドの標準出力を別のコマンドへ渡す記号はどれですか？",
+      options: [">", "|", "&&&", "->"],
+      correct: 1,
+    },
+  ],
+};
 
 function QuizScreen({
   game,
@@ -336,35 +513,90 @@ function QuizScreen({
   onHome,
 }: {
   game: "sql" | "linux";
-  onResult: () => void;
+  onResult: (result: GameResult) => void;
   onHome: () => void;
 }) {
   const isSql = game === "sql";
+  const questions = QUIZ_QUESTIONS[game];
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+  const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
+  const [score, setScore] = useState(0);
+  const currentQuestion = questions[currentQuestionIndex];
+  const hasAnswered = selectedAnswer !== null;
+
+  const handleAnswer = (index: number) => {
+    if (hasAnswered) return;
+    setSelectedAnswer(index);
+  };
+
+  const handleNext = () => {
+    if (selectedAnswer === null) return;
+    const nextScore = score + (selectedAnswer === currentQuestion.correct ? 1 : 0);
+
+    if (currentQuestionIndex === questions.length - 1) {
+      const accuracy = Math.round((nextScore / questions.length) * 100);
+      onResult({
+        primaryLabel: "スコア",
+        primaryValue: `${nextScore}/${questions.length}`,
+        secondaryLabel: "正解数",
+        secondaryValue: `${nextScore}問`,
+        accuracy,
+        summary: accuracy === 100
+          ? "全問正解です。すばらしい結果です。"
+          : "回答を完了しました。間違えた問題も復習してみましょう。",
+      });
+      return;
+    }
+
+    setScore(nextScore);
+    setCurrentQuestionIndex((index) => index + 1);
+    setSelectedAnswer(null);
+  };
+
   return (
     <GameLayout game={game} onHome={onHome}>
       <div className="game-heading">
         <span className="eyebrow">{isSql ? "SQL QUIZ" : "LINUX QUIZ"}</span>
         <h1>{isSql ? "SQLの基礎を確認しましょう。" : "Linuxコマンドを確認しましょう。"}</h1>
-        <p>問題と選択肢のレイアウトです。正誤判定は次のPhaseで実装します。</p>
+        <p>全5問の選択式クイズです。回答すると、その場で正誤を確認できます。</p>
       </div>
       <section className="quiz-card">
-        <div className="quiz-card-top"><span>QUESTION 01 / 05</span><span className="quiz-status">未回答</span></div>
-        <h2>
-          {isSql
-            ? "ユーザー一覧を取得するSQLとして正しいものはどれですか？"
-            : "現在のディレクトリを表示するLinuxコマンドはどれですか？"}
-        </h2>
+        <div className="quiz-card-top">
+          <span>QUESTION {String(currentQuestionIndex + 1).padStart(2, "0")} / {questions.length}</span>
+          <span className="quiz-status">
+            {hasAnswered
+              ? selectedAnswer === currentQuestion.correct ? "正解" : "不正解"
+              : "未回答"}
+          </span>
+        </div>
+        <h2>{currentQuestion.question}</h2>
         <div className="quiz-options">
-          {(isSql ? QUIZ_OPTIONS : ["pwd", "cd", "ls", "mkdir"]).map((option, index) => (
-            <button className="quiz-option" key={option} type="button">
+          {currentQuestion.options.map((option, index) => {
+            const isSelected = selectedAnswer === index;
+            const isCorrect = currentQuestion.correct === index;
+            return (
+            <button
+              className={`quiz-option ${hasAnswered && isCorrect ? "quiz-option-correct" : ""} ${hasAnswered && isSelected && !isCorrect ? "quiz-option-wrong" : ""}`}
+              key={option}
+              type="button"
+              onClick={() => handleAnswer(index)}
+              disabled={hasAnswered}
+            >
               <span className="option-key">{String.fromCharCode(65 + index)}</span>
               <code>{option}</code>
             </button>
-          ))}
+            );
+          })}
         </div>
         <div className="game-action-row">
-          <span className="helper-text">選択しても正誤判定は行われません</span>
-          <Button onClick={onResult}>回答する →</Button>
+          <span className="helper-text">
+            {hasAnswered
+              ? selectedAnswer === currentQuestion.correct ? "正解です。" : "正しい選択肢を確認しましょう。"
+              : "選択肢を1つ選んでください"}
+          </span>
+          <Button onClick={handleNext} disabled={!hasAnswered}>
+            {currentQuestionIndex === questions.length - 1 ? "結果を見る →" : "次の問題 →"}
+          </Button>
         </div>
       </section>
     </GameLayout>
@@ -373,10 +605,12 @@ function QuizScreen({
 
 function ResultScreen({
   game,
+  result,
   onAgain,
   onHome,
 }: {
   game: Game;
+  result: GameResult;
   onAgain: () => void;
   onHome: () => void;
 }) {
@@ -387,14 +621,14 @@ function ResultScreen({
         <span className={`result-check result-check-${item.color}`}>✓</span>
         <span className="eyebrow">{item.label.toUpperCase()} RESULT</span>
         <h1>おつかれさまでした。</h1>
-        <p>結果表示のエリアです。Phase 1では仮の値を表示しています。</p>
+        <p>{result.summary}</p>
       </div>
       <section className="result-card">
         <div className="result-metrics">
           {[
-            ["今回", "—", "未実装"],
-            ["前回", "—", "未実装"],
-            ["自己ベスト", "—", "未実装"],
+            ["今回", result.primaryValue, result.primaryLabel],
+            ["正確率", `${result.accuracy}%`, "今回の正解率"],
+            [result.secondaryLabel, result.secondaryValue, "今回の結果"],
           ].map(([label, value, note]) => (
             <div className="result-metric" key={label}>
               <span>{label}</span>
@@ -405,7 +639,7 @@ function ResultScreen({
         </div>
         <div className="result-notice">
           <span>i</span>
-          <p>スコア計算と履歴保存は今後のPhaseで実装します。</p>
+          <p>この結果は今回のプレイに基づいて計算されています。</p>
         </div>
         <div className="result-actions">
           <Button variant="secondary" onClick={onHome}>HOMEへ戻る</Button>
@@ -419,6 +653,7 @@ function ResultScreen({
 function LearningApp() {
   const [screen, setScreen] = useState<Screen>("user-selection");
   const [user, setUser] = useState<User | null>(null);
+  const [result, setResult] = useState<GameResult | null>(null);
 
   const chooseUser = (selected: User) => {
     setUser(selected);
@@ -427,17 +662,23 @@ function LearningApp() {
 
   if (!user || screen === "user-selection") return <UserSelection onSelect={chooseUser} />;
 
-  const startGame = (game: Game) => setScreen(game);
-  const showResult = (game: Game) => setScreen(`${game}-result` as Screen);
+  const startGame = (game: Game) => {
+    setResult(null);
+    setScreen(game);
+  };
+  const showResult = (game: Game, gameResult: GameResult) => {
+    setResult(gameResult);
+    setScreen(`${game}-result` as Screen);
+  };
   const resultGame = screen.endsWith("-result") ? screen.replace("-result", "") as Game : null;
 
   if (screen === "home") {
     return <Home user={user} onChangeUser={() => setScreen("user-selection")} onStart={startGame} />;
   }
-  if (screen === "typing") return <TypingScreen onResult={() => showResult("typing")} onHome={() => setScreen("home")} />;
-  if (screen === "sql") return <QuizScreen game="sql" onResult={() => showResult("sql")} onHome={() => setScreen("home")} />;
-  if (screen === "linux") return <QuizScreen game="linux" onResult={() => showResult("linux")} onHome={() => setScreen("home")} />;
-  if (resultGame) return <ResultScreen game={resultGame} onAgain={() => setScreen(resultGame)} onHome={() => setScreen("home")} />;
+  if (screen === "typing") return <TypingScreen onResult={(gameResult) => showResult("typing", gameResult)} onHome={() => setScreen("home")} />;
+  if (screen === "sql") return <QuizScreen game="sql" onResult={(gameResult) => showResult("sql", gameResult)} onHome={() => setScreen("home")} />;
+  if (screen === "linux") return <QuizScreen game="linux" onResult={(gameResult) => showResult("linux", gameResult)} onHome={() => setScreen("home")} />;
+  if (resultGame && result) return <ResultScreen game={resultGame} result={result} onAgain={() => startGame(resultGame)} onHome={() => setScreen("home")} />;
   return null;
 }
 

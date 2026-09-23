@@ -221,6 +221,8 @@ export function LinuxQuiz() {
     setSelectedOptionIndex(null);
     setIsAnswered(false);
     setQuizFinished(false);
+    setBootLogs([]);
+    setBooting(true);
   };
 
   if (booting) {

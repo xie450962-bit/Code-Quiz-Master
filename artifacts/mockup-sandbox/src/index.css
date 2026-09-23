@@ -384,12 +384,16 @@ button, textarea {
 .quiz-options { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .quiz-option { display: flex; align-items: center; gap: 12px; padding: 14px; border: 1px solid var(--app-line); border-radius: 9px; background: white; color: var(--app-ink); cursor: pointer; text-align: left; }
 .quiz-option:hover { border-color: #9db6ed; background: #fbfcff; }
+.quiz-option:disabled { cursor: default; }
+.quiz-option-correct { border-color: #83b99a; background: #f3fbf5; }
+.quiz-option-wrong { border-color: #d28d96; background: #fff6f7; }
 .option-key { display: grid; place-items: center; width: 25px; height: 25px; border-radius: 6px; background: #f0f3f7; color: #718096; font-size: 0.72rem; font-weight: 800; }
 .quiz-option code { color: #344b6b; font-size: 0.84rem; }
 .game-action-row { display: flex; align-items: center; justify-content: space-between; gap: 18px; margin-top: 26px; }
 .helper-text { color: #9aa5b2; font-size: 0.76rem; }
 .app-button { border: 0; border-radius: 8px; padding: 11px 17px; cursor: pointer; font-size: 0.82rem; font-weight: 750; transition: opacity 150ms ease, transform 150ms ease; }
 .app-button:hover { opacity: 0.88; transform: translateY(-1px); }
+.app-button:disabled { cursor: not-allowed; opacity: 0.5; transform: none; }
 .app-button-primary { background: var(--app-blue); color: white; }
 .app-button-secondary { background: #f0f3f7; color: #4f5d70; }
 .app-button-text { background: transparent; color: var(--app-blue); }
