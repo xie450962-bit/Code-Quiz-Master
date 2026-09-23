@@ -183,3 +183,250 @@
     pointer-events: none;
   }
 }
+
+/* CodeStart Phase 1 application */
+:root {
+  --app-ink: #182230;
+  --app-muted: #6f7b8b;
+  --app-line: #e3e8ef;
+  --app-blue: #3167d8;
+  --app-blue-soft: #eef4ff;
+  --app-purple: #805ac7;
+  --app-purple-soft: #f5efff;
+  --app-green: #3e9277;
+  --app-green-soft: #edf8f3;
+}
+
+button, textarea {
+  font: inherit;
+}
+
+.app-shell {
+  min-height: 100vh;
+  background: #f8fafc;
+  color: var(--app-ink);
+}
+
+.selection-page {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 40px 24px;
+  background: linear-gradient(145deg, #f9fbff 0%, #f4f7fb 100%);
+}
+
+.selection-panel {
+  width: min(100%, 460px);
+}
+
+.app-logo {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  color: var(--app-ink);
+  font-weight: 760;
+  letter-spacing: -0.03em;
+  font-size: 1.08rem;
+}
+
+.app-logo-mark {
+  display: grid;
+  place-items: center;
+  width: 29px;
+  height: 29px;
+  border-radius: 9px;
+  background: var(--app-blue);
+  color: white;
+  font-size: 1.3rem;
+  line-height: 1;
+  transform: rotate(-12deg);
+}
+
+.selection-heading {
+  margin: 76px 0 32px;
+}
+
+.eyebrow {
+  color: var(--app-blue);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+}
+
+.selection-heading h1, .home-intro h1, .game-heading h1, .result-heading h1 {
+  margin: 10px 0 10px;
+  color: var(--app-ink);
+  font-size: clamp(1.8rem, 4vw, 2.35rem);
+  line-height: 1.2;
+  letter-spacing: -0.045em;
+}
+
+.selection-heading p, .home-intro p, .game-heading p, .result-heading p {
+  margin: 0;
+  color: var(--app-muted);
+  font-size: 0.93rem;
+  line-height: 1.7;
+}
+
+.user-list {
+  display: grid;
+  gap: 12px;
+}
+
+.user-card, .game-card {
+  border: 1px solid var(--app-line);
+  background: white;
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+}
+
+.user-card {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: 16px;
+  border-radius: 14px;
+}
+
+.user-card:hover, .game-card:hover {
+  border-color: #aac2f1;
+  box-shadow: 0 9px 26px rgba(40, 67, 112, 0.08);
+  transform: translateY(-2px);
+}
+
+.avatar {
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  font-size: 0.75rem;
+  font-weight: 800;
+}
+
+.avatar-small { width: 28px; height: 28px; font-size: 0.58rem; }
+.avatar-blue { background: #dce8ff; color: #315fb9; }
+.avatar-purple { background: #eadfff; color: #7951b9; }
+.avatar-green { background: #d8f1e6; color: #347e67; }
+
+.user-card-copy {
+  display: grid;
+  gap: 4px;
+  margin-left: 13px;
+}
+
+.user-card-copy strong { font-size: 0.95rem; }
+.user-card-copy small { color: var(--app-muted); }
+.arrow, .game-card-arrow { margin-left: auto; color: #9ca9b8; font-size: 1.2rem; }
+.muted-note { margin: 22px 0 0; color: #98a2af; font-size: 0.76rem; text-align: center; }
+
+.app-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: min(100% - 64px, 1120px);
+  height: 76px;
+  margin: 0 auto;
+  border-bottom: 1px solid var(--app-line);
+}
+
+.current-user {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  border: 0;
+  background: transparent;
+  color: var(--app-ink);
+  cursor: pointer;
+  font-size: 0.82rem;
+}
+
+.current-user-chevron { color: #8d99a8; margin-left: 2px; }
+.home-content, .game-content { width: min(100% - 64px, 1120px); margin: 0 auto; }
+.home-content { padding: 92px 0 90px; }
+.home-intro { max-width: 630px; }
+.game-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; margin-top: 54px; }
+.game-card { position: relative; display: flex; flex-direction: column; min-height: 246px; padding: 26px; border-radius: 16px; }
+.game-icon { display: grid; place-items: center; width: 48px; height: 48px; border-radius: 13px; font-size: 1.25rem; font-weight: 800; font-family: var(--font-mono); }
+.game-icon-blue { background: var(--app-blue-soft); color: var(--app-blue); }
+.game-icon-purple { background: var(--app-purple-soft); color: var(--app-purple); }
+.game-icon-green { background: var(--app-green-soft); color: var(--app-green); }
+.game-card-copy { display: grid; gap: 8px; margin-top: auto; padding-top: 30px; }
+.game-card-label { font-size: 1.15rem; font-weight: 760; letter-spacing: -0.025em; }
+.game-card-description { color: #536071; font-size: 0.87rem; }
+.game-card-detail { color: #a0aab7; font-size: 0.75rem; }
+.game-card-arrow { position: absolute; right: 24px; bottom: 23px; }
+
+.game-page { min-height: 100vh; width: min(100% - 64px, 1120px); margin: 0 auto; }
+.game-topbar { display: flex; align-items: center; justify-content: space-between; height: 76px; border-bottom: 1px solid var(--app-line); }
+.back-link { border: 0; background: transparent; color: var(--app-muted); cursor: pointer; font-size: 0.72rem; font-weight: 800; letter-spacing: 0.06em; }
+.back-link:hover { color: var(--app-blue); }
+.game-progress { display: flex; align-items: center; gap: 9px; font-size: 0.8rem; color: var(--app-muted); }
+.game-progress strong { color: var(--app-ink); }
+.game-dot { display: grid; place-items: center; width: 26px; height: 26px; border-radius: 8px; font-size: 0.7rem; font-family: var(--font-mono); font-weight: 800; }
+.game-dot-blue { background: var(--app-blue-soft); color: var(--app-blue); }
+.game-dot-purple { background: var(--app-purple-soft); color: var(--app-purple); }
+.game-dot-green { background: var(--app-green-soft); color: var(--app-green); }
+.progress-divider { color: #c4ccd5; }
+.phase-label { color: #a6b0bd; font-size: 0.66rem; font-weight: 800; letter-spacing: 0.12em; }
+.game-content { padding: 76px 0 100px; }
+.game-heading, .result-heading { max-width: 720px; }
+.game-heading h1 { font-size: clamp(1.65rem, 3vw, 2.1rem); }
+.typing-card, .quiz-card, .result-card { margin-top: 38px; padding: 28px; border: 1px solid var(--app-line); border-radius: 16px; background: white; box-shadow: 0 10px 35px rgba(35, 52, 77, 0.04); }
+.typing-card-meta, .quiz-card-top { display: flex; justify-content: space-between; color: #98a4b2; font-size: 0.67rem; font-weight: 800; letter-spacing: 0.1em; }
+.typing-prompt { margin: 38px 0 18px; padding: 24px; border-radius: 10px; background: #f5f7fa; color: #30425b; font-family: var(--font-mono); font-size: clamp(0.92rem, 2vw, 1.1rem); }
+.typing-input { display: block; width: 100%; min-height: 124px; padding: 15px; border: 1px solid var(--app-line); border-radius: 9px; outline: none; resize: vertical; color: var(--app-ink); font-family: var(--font-mono); font-size: 0.9rem; }
+.typing-input:focus { border-color: #8eace9; box-shadow: 0 0 0 3px #e8efff; }
+.quiz-card h2 { margin: 34px 0 26px; max-width: 760px; font-size: 1.15rem; line-height: 1.6; letter-spacing: -0.02em; }
+.quiz-status { color: #b1bac5; letter-spacing: 0; }
+.quiz-options { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.quiz-option { display: flex; align-items: center; gap: 12px; padding: 14px; border: 1px solid var(--app-line); border-radius: 9px; background: white; color: var(--app-ink); cursor: pointer; text-align: left; }
+.quiz-option:hover { border-color: #9db6ed; background: #fbfcff; }
+.option-key { display: grid; place-items: center; width: 25px; height: 25px; border-radius: 6px; background: #f0f3f7; color: #718096; font-size: 0.72rem; font-weight: 800; }
+.quiz-option code { color: #344b6b; font-size: 0.84rem; }
+.game-action-row { display: flex; align-items: center; justify-content: space-between; gap: 18px; margin-top: 26px; }
+.helper-text { color: #9aa5b2; font-size: 0.76rem; }
+.app-button { border: 0; border-radius: 8px; padding: 11px 17px; cursor: pointer; font-size: 0.82rem; font-weight: 750; transition: opacity 150ms ease, transform 150ms ease; }
+.app-button:hover { opacity: 0.88; transform: translateY(-1px); }
+.app-button-primary { background: var(--app-blue); color: white; }
+.app-button-secondary { background: #f0f3f7; color: #4f5d70; }
+.app-button-text { background: transparent; color: var(--app-blue); }
+.result-heading { text-align: center; margin: 0 auto; }
+.result-heading .eyebrow { display: block; margin-top: 17px; }
+.result-check { display: grid; place-items: center; width: 48px; height: 48px; margin: auto; border-radius: 50%; font-size: 1.25rem; font-weight: 800; }
+.result-check-blue { background: var(--app-blue-soft); color: var(--app-blue); }
+.result-check-purple { background: var(--app-purple-soft); color: var(--app-purple); }
+.result-check-green { background: var(--app-green-soft); color: var(--app-green); }
+.result-card { max-width: 760px; margin-left: auto; margin-right: auto; }
+.result-metrics { display: grid; grid-template-columns: repeat(3, 1fr); }
+.result-metric { display: grid; gap: 8px; padding: 8px 22px; border-right: 1px solid var(--app-line); text-align: center; }
+.result-metric:last-child { border-right: 0; }
+.result-metric span { color: var(--app-muted); font-size: 0.76rem; }
+.result-metric strong { color: #a8b1bd; font-size: 1.8rem; font-weight: 650; }
+.result-metric small { color: #b4bdc8; font-size: 0.68rem; }
+.result-notice { display: flex; gap: 10px; align-items: center; margin-top: 30px; padding: 12px 14px; border-radius: 8px; background: #f7f9fb; color: #768394; font-size: 0.76rem; }
+.result-notice span { display: grid; place-items: center; width: 18px; height: 18px; border: 1px solid #aab5c2; border-radius: 50%; font-size: 0.66rem; }
+.result-notice p { margin: 0; }
+.result-actions { display: flex; justify-content: center; gap: 10px; margin-top: 28px; }
+.preview-error { color: red; padding: 2rem; font-family: system-ui; }
+
+@media (max-width: 760px) {
+  .app-header, .home-content, .game-content, .game-page { width: min(100% - 36px, 620px); }
+  .home-content, .game-content { padding-top: 54px; }
+  .game-grid { grid-template-columns: 1fr; margin-top: 34px; }
+  .game-card { min-height: 170px; }
+  .game-topbar { height: 66px; }
+  .game-progress { margin: 0 auto; }
+  .phase-label { display: none; }
+  .quiz-options { grid-template-columns: 1fr; }
+  .typing-card, .quiz-card, .result-card { padding: 20px; }
+  .game-action-row { align-items: stretch; flex-direction: column; }
+  .game-action-row .app-button { width: 100%; }
+  .result-metrics { grid-template-columns: 1fr; gap: 16px; }
+  .result-metric { border-right: 0; border-bottom: 1px solid var(--app-line); padding-bottom: 16px; }
+  .result-metric:last-child { border-bottom: 0; }
+  .result-actions { flex-direction: column-reverse; }
+  .result-actions .app-button { width: 100%; }
+}
