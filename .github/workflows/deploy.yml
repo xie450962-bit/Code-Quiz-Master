@@ -37,6 +37,7 @@ jobs:
   # ── Frontend → Cloudflare Pages ───────────────────────────────────────────
   deploy-frontend:
     name: "Deploy Frontend → Pages"
+    needs: deploy-api
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

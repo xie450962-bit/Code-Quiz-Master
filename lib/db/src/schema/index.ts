@@ -1,20 +1,16 @@
-// Export your models here. Add one export per file
-// export * from "./posts";
-//
-// Each model/table should ideally be split into different files.
-// Each model/table should define a Drizzle table, insert schema, and types:
-//
-//   import { pgTable, text, serial } from "drizzle-orm/pg-core";
-//   import { createInsertSchema } from "drizzle-zod";
-//   import { z } from "zod/v4";
-//
-//   export const postsTable = pgTable("posts", {
-//     id: serial("id").primaryKey(),
-//     title: text("title").notNull(),
-//   });
-//
-//   export const insertPostSchema = createInsertSchema(postsTable).omit({ id: true });
-//   export type InsertPost = z.infer<typeof insertPostSchema>;
-//   export type Post = typeof postsTable.$inferSelect;
+import { pgTable, serial, text, integer, real, timestamp, index } from "drizzle-orm/pg-core";
 
-export {}
+export const gameResults = pgTable("game_results", {
+  id: serial("id").primaryKey(),
+  userId: text("user_id").notNull(),
+  gameType: text("game_type").notNull(),
+  wpm: integer("wpm"),
+  accuracy: real("accuracy").notNull(),
+  errors: integer("errors"),
+  score: integer("score").notNull(),
+  totalQuestions: integer("total_questions"),
+  correctAnswers: integer("correct_answers"),
+  playedAt: timestamp("played_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => [index("game_results_user_game_played_idx").on(table.userId, table.gameType, table.playedAt)]);
+
+export type GameResultRecord = typeof gameResults.$inferSelect;

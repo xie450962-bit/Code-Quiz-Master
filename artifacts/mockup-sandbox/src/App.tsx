@@ -38,6 +38,7 @@ type Screen =
   | "linux-result";
 
 type User = {
+  id: string;
   name: string;
   role: string;
   initials: string;
@@ -45,10 +46,25 @@ type User = {
 };
 
 const USERS: User[] = [
-  { name: "山田 太郎", role: "新入社員", initials: "YT", color: "blue" },
-  { name: "佐藤 花子", role: "新入社員", initials: "SH", color: "purple" },
-  { name: "鈴木 一郎", role: "新入社員", initials: "SI", color: "green" },
+  { id: "user-yamada", name: "山田 太郎", role: "新入社員", initials: "YT", color: "blue" },
+  { id: "user-sato", name: "佐藤 花子", role: "新入社員", initials: "SH", color: "purple" },
+  { id: "user-suzuki", name: "鈴木 一郎", role: "新入社員", initials: "SI", color: "green" },
 ];
+
+type StoredResult = {
+  id: number;
+  userId: string;
+  gameType: Game;
+  wpm: number | null;
+  accuracy: number;
+  errors: number | null;
+  score: number;
+  totalQuestions: number | null;
+  correctAnswers: number | null;
+  playedAt: string;
+};
+type ResultComparison = { current: StoredResult; previous: StoredResult | null; best: StoredResult };
+type ResultView = { comparison: ResultComparison; saveError: string | null };
 
 const GAMES: Array<{
   id: Game;
@@ -486,6 +502,7 @@ function QuizScreen({
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
   const [answers, setAnswers] = useState<number[]>([]);
+  const isFinishedRef = useRef(false);
   const currentQuestion = questions[currentQuestionIndex];
   const hasAnswered = selectedAnswer !== null;
 
@@ -495,10 +512,11 @@ function QuizScreen({
   };
 
   const handleNext = () => {
-    if (selectedAnswer === null) return;
+    if (selectedAnswer === null || isFinishedRef.current) return;
     const nextAnswers = [...answers, selectedAnswer];
 
     if (currentQuestionIndex === questions.length - 1) {
+      isFinishedRef.current = true;
       onResult(calculateQuizResult(questions, nextAnswers));
       return;
     }
@@ -568,30 +586,31 @@ function QuizScreen({
 function ResultScreen({
   game,
   result,
+  resultView,
   onAgain,
   onHome,
 }: {
   game: Game;
   result: QuizResult | TypingResult;
+  resultView: ResultView;
   onAgain: () => void;
   onHome: () => void;
 }) {
   const item = GAMES.find((candidate) => candidate.id === game)!;
   const typingResult = "wpm" in result ? result : null;
   const quizResult = "correctCount" in result ? result : null;
-  const metrics: string[][] = typingResult
-    ? [
-        ["WPM", String(typingResult.wpm), "一分あたりの入力速度"],
-        ["正確率", String(typingResult.accuracy) + "%", "正しい文字の割合"],
-        ["ミス数", String(typingResult.mistakes), "誤入力した文字数"],
-        ["スコア", String(typingResult.score) + "点", "速度・正確率・ミス数から計算"],
-      ]
-    : [
-        ["今回の正解数", `${quizResult!.correctCount} / ${quizResult!.totalQuestions}`, "正解した問題数"],
-        ["正確率", `${quizResult!.accuracy}%`, "今回の正解率"],
-        ["前回", "—", "保存機能はPhase 4で実装"],
-        ["自己ベスト", "—", "保存機能はPhase 4で実装"],
-      ];
+  const comparisonRows = [
+    ["今回", resultView.comparison.current],
+    ["前回", resultView.comparison.previous],
+    ["自己ベスト", resultView.comparison.best],
+  ] as const;
+
+  const describeResult = (record: StoredResult | null) => {
+    if (!record) return "記録はありません";
+    return typingResult
+      ? `WPM ${record.wpm ?? 0} ・ 正確率 ${record.accuracy}% ・ ミス ${record.errors ?? 0} ・ スコア ${record.score}点`
+      : `${record.correctAnswers ?? 0} / ${record.totalQuestions ?? 10}問 ・ 正確率 ${record.accuracy}%`;
+  };
 
   return (
     <GameLayout game={game} onHome={onHome}>
@@ -602,36 +621,21 @@ function ResultScreen({
         <p>{typingResult ? "今回のタイピング結果です。" : `全${quizResult!.totalQuestions}問の回答が完了しました。`}</p>
       </div>
       <section className="result-card">
-        <div className={typingResult ? "result-metrics result-metrics-typing" : "result-metrics result-metrics-quiz"}>
-          {metrics.map(([label, value, note]) => (
-            <div className="result-metric" key={label}>
-              <span>{label}</span>
-              <strong>{value}</strong>
-              <small>{note}</small>
-            </div>
-          ))}
-        </div>
-        {typingResult && (
-          <div className="result-comparison">
-            <h2>スコア比較</h2>
-            <div className="result-comparison-metrics">
-              {[
-                ["今回", String(typingResult.score) + "点", "今回のスコア"],
-                ["前回", "—", "記録はまだありません"],
-                ["自己ベスト", "—", "記録はまだありません"],
-              ].map(([label, value, note]) => (
-                <div className="result-metric" key={label}>
-                  <span>{label}</span>
-                  <strong>{value}</strong>
-                  <small>{note}</small>
-                </div>
-              ))}
-            </div>
+        <div className="result-comparison">
+          <h2>今回・前回・自己ベスト</h2>
+          <div className="result-comparison-metrics">
+            {comparisonRows.map(([label, record]) => (
+              <div className="result-metric" key={label}>
+                <span>{label}</span>
+                <strong>{describeResult(record)}</strong>
+                <small>{record ? new Date(record.playedAt).toLocaleString("ja-JP") : "前回の記録はありません"}</small>
+              </div>
+            ))}
           </div>
-        )}
+        </div>
         <div className="result-notice">
           <span>i</span>
-          <p>{typingResult ? "前回と自己ベストの保存は Phase 4 で実装します。" : "正解数と正確率を表示しています。前回と自己ベストの保存はPhase 4で実装します。"}</p>
+          <p>{resultView.saveError ?? "結果を保存しました。"}</p>
         </div>
         <div className="result-actions">
           <Button variant="secondary" onClick={onHome}>HOMEへ戻る</Button>
@@ -646,6 +650,7 @@ function LearningApp() {
   const [screen, setScreen] = useState<Screen>("user-selection");
   const [user, setUser] = useState<User | null>(null);
   const [result, setResult] = useState<QuizResult | TypingResult | null>(null);
+  const [resultView, setResultView] = useState<ResultView | null>(null);
 
   const chooseUser = (selected: User) => {
     setUser(selected);
@@ -656,10 +661,39 @@ function LearningApp() {
 
   const startGame = (game: Game) => {
     setResult(null);
+    setResultView(null);
     setScreen(game);
   };
-  const showResult = (game: Game, gameResult: QuizResult | TypingResult) => {
+  const showResult = async (game: Game, gameResult: QuizResult | TypingResult) => {
     setResult(gameResult);
+    const payload = game === "typing" && "wpm" in gameResult
+      ? { userId: user.id, gameType: game, wpm: gameResult.wpm, accuracy: gameResult.accuracy, errors: gameResult.mistakes, score: gameResult.score }
+      : { userId: user.id, gameType: game, accuracy: (gameResult as QuizResult).accuracy, score: (gameResult as QuizResult).correctCount, totalQuestions: (gameResult as QuizResult).totalQuestions, correctAnswers: (gameResult as QuizResult).correctCount };
+    let view: ResultView;
+    try {
+      const response = await fetch("/api/game-results", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+        signal: AbortSignal.timeout(10000),
+      });
+      if (!response.ok) throw new Error(`保存APIが ${response.status} を返しました`);
+      view = { comparison: await response.json() as ResultComparison, saveError: null };
+    } catch (error) {
+      const now = new Date().toISOString();
+      const current: StoredResult = {
+        id: 0, userId: user.id, gameType: game,
+        wpm: "wpm" in gameResult ? gameResult.wpm : null,
+        accuracy: gameResult.accuracy,
+        errors: "mistakes" in gameResult ? gameResult.mistakes : null,
+        score: "wpm" in gameResult ? gameResult.score : gameResult.correctCount,
+        totalQuestions: "correctCount" in gameResult ? gameResult.totalQuestions : null,
+        correctAnswers: "correctCount" in gameResult ? gameResult.correctCount : null,
+        playedAt: now,
+      };
+      view = { comparison: { current, previous: null, best: current }, saveError: `結果を保存できませんでした。DB/APIの設定を確認してください。(${error instanceof Error ? error.message : String(error)})` };
+    }
+    setResultView(view);
     setScreen((game + "-result") as Screen);
   };
   const resultGame = screen.endsWith("-result") ? screen.replace("-result", "") as Game : null;
@@ -670,7 +704,7 @@ function LearningApp() {
   if (screen === "typing") return <TypingScreen onResult={(typingResult) => showResult("typing", typingResult)} onHome={() => setScreen("home")} />;
   if (screen === "sql") return <QuizScreen game="sql" onResult={(gameResult) => showResult("sql", gameResult)} onHome={() => setScreen("home")} />;
   if (screen === "linux") return <QuizScreen game="linux" onResult={(gameResult) => showResult("linux", gameResult)} onHome={() => setScreen("home")} />;
-  if (resultGame && result) return <ResultScreen game={resultGame} result={result} onAgain={() => startGame(resultGame)} onHome={() => setScreen("home")} />;
+  if (resultGame && result && resultView) return <ResultScreen game={resultGame} result={result} resultView={resultView} onAgain={() => startGame(resultGame)} onHome={() => setScreen("home")} />;
   return null;
 }
 
