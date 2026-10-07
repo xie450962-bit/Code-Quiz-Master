@@ -23,9 +23,10 @@ export function validateResult(value: unknown): value is ResultInput {
     return isNumber(body.wpm) && body.wpm >= 0 && Number.isInteger(body.wpm)
       && isNumber(body.errors) && body.errors >= 0 && Number.isInteger(body.errors);
   }
-  return body.totalQuestions === 10 && Number.isInteger(body.totalQuestions)
+  return isNumber(body.totalQuestions) && Number.isInteger(body.totalQuestions)
+    && body.totalQuestions > 0 && body.totalQuestions <= 10
     && isNumber(body.correctAnswers) && Number.isInteger(body.correctAnswers)
-    && body.correctAnswers >= 0 && body.correctAnswers <= 10
+    && body.correctAnswers >= 0 && body.correctAnswers <= body.totalQuestions
     && body.score === body.correctAnswers
-    && body.accuracy === body.correctAnswers * 10;
+    && body.accuracy === Math.round((body.correctAnswers / body.totalQuestions) * 100);
 }

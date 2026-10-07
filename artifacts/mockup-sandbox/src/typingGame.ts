@@ -1,6 +1,6 @@
 export const TYPING_DURATION_SECONDS = 180;
 
-export type TypingGenre = "IT系" | "一般系";
+export type TypingGenre = string;
 
 export type TypingPrompt = {
   id: string;

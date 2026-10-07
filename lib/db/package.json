@@ -11,7 +11,8 @@
   "scripts": {
     "test": "node --experimental-strip-types --test src/game-results.test.ts",
     "push": "drizzle-kit push --config ./drizzle.config.ts",
-    "push-force": "drizzle-kit push --force --config ./drizzle.config.ts"
+    "push-force": "drizzle-kit push --force --config ./drizzle.config.ts",
+    "seed-content": "node ./seed-content.mjs"
   },
   "dependencies": {
     "drizzle-orm": "catalog:",

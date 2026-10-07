@@ -12,8 +12,8 @@ import {
 import { modules as discoveredModules } from "./.generated/mockup-components";
 import {
   calculateQuizResult,
-  QUIZ_QUESTIONS,
   type QuizResult,
+  type QuizQuestion,
 } from "./quizGame";
 import {
   applyTypingInput,
@@ -21,7 +21,7 @@ import {
   formatRemainingTime,
   getRemainingSeconds,
   TYPING_DURATION_SECONDS,
-  TYPING_PROMPTS,
+  type TypingPrompt,
   type TypingResult,
 } from "./typingGame";
 
@@ -30,6 +30,9 @@ type Game = "typing" | "sql" | "linux";
 type Screen =
   | "user-selection"
   | "home"
+  | "typing-setup"
+  | "sql-setup"
+  | "linux-setup"
   | "typing"
   | "typing-result"
   | "sql"
@@ -294,6 +297,60 @@ function Home({
   );
 }
 
+type GameContentOptions = {
+  typingCategories: string[];
+  quizDifficulties: Array<{ gameType: string; difficulty: string }>;
+};
+
+function GameSetup({
+  game,
+  options,
+  loading,
+  error,
+  onStart,
+  onHome,
+}: {
+  game: Game;
+  options: GameContentOptions | null;
+  loading: boolean;
+  error: string | null;
+  onStart: (game: Game, choice: string) => void;
+  onHome: () => void;
+}) {
+  const choices = game === "typing"
+    ? options?.typingCategories ?? []
+    : options?.quizDifficulties.filter((item) => item.gameType === game).map((item) => item.difficulty) ?? [];
+  const [choice, setChoice] = useState("");
+  useEffect(() => setChoice(choices[0] ?? ""), [game, choices.join("|")]);
+  const label = game === "typing" ? "カテゴリー" : "難易度";
+  return (
+    <GameLayout game={game} onHome={onHome}>
+      <div className="game-heading">
+        <span className="eyebrow">{game === "typing" ? "TYPING PRACTICE" : `${game.toUpperCase()} QUIZ`}</span>
+        <h1>{game === "typing" ? "カテゴリーを選びましょう。" : "難易度を選びましょう。"}</h1>
+        <p>{game === "typing" ? "選んだカテゴリーの文章が出題されます。" : "選んだ難易度の問題が出題されます。"}</p>
+      </div>
+      <section className="quiz-card setup-card">
+        <span className="setup-label">{label}</span>
+        {error && <p className="setup-error" role="alert">{error}</p>}
+        {loading ? <p>選択肢を読み込んでいます…</p> : choices.length ? (
+          <div className="setup-options">
+            {choices.map((item) => (
+              <button className={`quiz-option ${choice === item ? "quiz-option-selected" : ""}`} key={item} type="button" aria-pressed={choice === item} onClick={() => setChoice(item)}>
+                <span className="option-key">{choice === item ? "✓" : "•"}</span><strong>{item}</strong>
+              </button>
+            ))}
+          </div>
+        ) : <p role="alert">選択できる項目がありません。DBに問題データを登録してください。</p>}
+        <div className="game-action-row">
+          <span className="helper-text">問題はゲーム開始時にDBから取得します。</span>
+          <Button onClick={() => onStart(game, choice)} disabled={!choice || loading}>ゲーム開始 →</Button>
+        </div>
+      </section>
+    </GameLayout>
+  );
+}
+
 function GameHeader({
   game,
   onHome,
@@ -336,9 +393,11 @@ function GameLayout({
 }
 
 function TypingScreen({
+  prompts,
   onResult,
   onHome,
 }: {
+  prompts: TypingPrompt[];
   onResult: (result: TypingResult) => void;
   onHome: () => void;
 }) {
@@ -359,7 +418,7 @@ function TypingScreen({
   const onResultRef = useRef(onResult);
   onResultRef.current = onResult;
 
-  const currentPrompt = TYPING_PROMPTS[promptIndex]!;
+  const currentPrompt = prompts[promptIndex]!;
   const deadline = startedAt + TYPING_DURATION_SECONDS * 1000;
 
   const finishGame = useCallback((finishedAt: number) => {
@@ -417,7 +476,7 @@ function TypingScreen({
       acceptedInputRef.current = "";
       setAcceptedInput("");
       if (inputElementRef.current) inputElementRef.current.value = "";
-      setPromptIndex((index) => (index + 1) % TYPING_PROMPTS.length);
+      setPromptIndex((index) => (index + 1) % prompts.length);
       setCompletedPrompts((count) => count + 1);
     }
   };
@@ -490,15 +549,16 @@ function TypingScreen({
 
 function QuizScreen({
   game,
+  questions,
   onResult,
   onHome,
 }: {
   game: "sql" | "linux";
+  questions: QuizQuestion[];
   onResult: (result: QuizResult) => void;
   onHome: () => void;
 }) {
   const isSql = game === "sql";
-  const questions = QUIZ_QUESTIONS[game];
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
   const [answers, setAnswers] = useState<number[]>([]);
@@ -531,7 +591,7 @@ function QuizScreen({
       <div className="game-heading">
         <span className="eyebrow">{isSql ? "SQL QUIZ" : "LINUX QUIZ"}</span>
         <h1>{isSql ? "SQLの基礎を確認しましょう。" : "Linuxコマンドを確認しましょう。"}</h1>
-        <p>全10問の選択式クイズです。回答後に正誤を確認して次の問題へ進みます。</p>
+        <p>全{questions.length}問の選択式クイズです。回答後に正誤を確認して次の問題へ進みます。</p>
       </div>
       <section className="quiz-card">
         <div className="quiz-card-top">
@@ -651,6 +711,26 @@ function LearningApp() {
   const [user, setUser] = useState<User | null>(null);
   const [result, setResult] = useState<QuizResult | TypingResult | null>(null);
   const [resultView, setResultView] = useState<ResultView | null>(null);
+  const [contentOptions, setContentOptions] = useState<GameContentOptions | null>(null);
+  const [optionsLoading, setOptionsLoading] = useState(true);
+  const [loadingGame, setLoadingGame] = useState(false);
+  const [setupError, setSetupError] = useState<string | null>(null);
+  const [typingPrompts, setTypingPrompts] = useState<TypingPrompt[]>([]);
+  const [quizQuestions, setQuizQuestions] = useState<QuizQuestion[]>([]);
+  const [activeChoice, setActiveChoice] = useState("");
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/game-content/options")
+      .then(async (response) => {
+        if (!response.ok) throw new Error(`選択肢APIが ${response.status} を返しました`);
+        return response.json() as Promise<GameContentOptions>;
+      })
+      .then((options) => { if (!cancelled) setContentOptions(options); })
+      .catch((error: unknown) => { if (!cancelled) setSetupError(`出題データを読み込めませんでした。${error instanceof Error ? ` (${error.message})` : ""}`); })
+      .finally(() => { if (!cancelled) setOptionsLoading(false); });
+    return () => { cancelled = true; };
+  }, []);
 
   const chooseUser = (selected: User) => {
     setUser(selected);
@@ -659,10 +739,35 @@ function LearningApp() {
 
   if (!user || screen === "user-selection") return <UserSelection onSelect={chooseUser} />;
 
-  const startGame = (game: Game) => {
+  const startGame = async (game: Game, choice: string) => {
     setResult(null);
     setResultView(null);
-    setScreen(game);
+    setSetupError(null);
+    setLoadingGame(true);
+    setScreen(`${game}-setup` as Screen);
+    try {
+      const query = game === "typing"
+        ? `category=${encodeURIComponent(choice)}`
+        : `gameType=${game}&difficulty=${encodeURIComponent(choice)}`;
+      const path = game === "typing" ? "typing" : "quizzes";
+      const response = await fetch(`/api/game-content/${path}?${query}`, { signal: AbortSignal.timeout(10000) });
+      const data = await response.json() as { error?: string; prompts?: Array<TypingPrompt & { category?: string }>; questions?: QuizQuestion[] };
+      if (!response.ok) throw new Error(data.error ?? `出題APIが ${response.status} を返しました`);
+      if (game === "typing") {
+        const prompts = (data.prompts ?? []).map((prompt) => ({ ...prompt, genre: prompt.category ?? choice }));
+        if (!prompts.length) throw new Error("該当カテゴリーの文章がありません。");
+        setTypingPrompts(prompts);
+      } else {
+        if (!data.questions?.length) throw new Error("選択した難易度の問題がありません。");
+        setQuizQuestions(data.questions);
+      }
+      setActiveChoice(choice);
+      setScreen(game);
+    } catch (error) {
+      setSetupError(`問題を読み込めませんでした。${error instanceof Error ? ` (${error.message})` : ""}`);
+    } finally {
+      setLoadingGame(false);
+    }
   };
   const showResult = async (game: Game, gameResult: QuizResult | TypingResult) => {
     setResult(gameResult);
@@ -699,12 +804,16 @@ function LearningApp() {
   const resultGame = screen.endsWith("-result") ? screen.replace("-result", "") as Game : null;
 
   if (screen === "home") {
-    return <Home user={user} onChangeUser={() => setScreen("user-selection")} onStart={startGame} />;
+    return <Home user={user} onChangeUser={() => setScreen("user-selection")} onStart={(game) => { setSetupError(null); setScreen(`${game}-setup` as Screen); }} />;
   }
-  if (screen === "typing") return <TypingScreen onResult={(typingResult) => showResult("typing", typingResult)} onHome={() => setScreen("home")} />;
-  if (screen === "sql") return <QuizScreen game="sql" onResult={(gameResult) => showResult("sql", gameResult)} onHome={() => setScreen("home")} />;
-  if (screen === "linux") return <QuizScreen game="linux" onResult={(gameResult) => showResult("linux", gameResult)} onHome={() => setScreen("home")} />;
-  if (resultGame && result && resultView) return <ResultScreen game={resultGame} result={result} resultView={resultView} onAgain={() => startGame(resultGame)} onHome={() => setScreen("home")} />;
+  if (screen.endsWith("-setup")) {
+    const game = screen.replace("-setup", "") as Game;
+    return <GameSetup game={game} options={contentOptions} loading={optionsLoading || loadingGame} onStart={startGame} onHome={() => setScreen("home")} error={setupError} />;
+  }
+  if (screen === "typing") return <TypingScreen prompts={typingPrompts} onResult={(typingResult) => showResult("typing", typingResult)} onHome={() => setScreen("home")} />;
+  if (screen === "sql") return <QuizScreen game="sql" questions={quizQuestions} onResult={(gameResult) => showResult("sql", gameResult)} onHome={() => setScreen("home")} />;
+  if (screen === "linux") return <QuizScreen game="linux" questions={quizQuestions} onResult={(gameResult) => showResult("linux", gameResult)} onHome={() => setScreen("home")} />;
+  if (resultGame && result && resultView) return <ResultScreen game={resultGame} result={result} resultView={resultView} onAgain={() => startGame(resultGame, activeChoice)} onHome={() => setScreen("home")} />;
   return null;
 }
 
