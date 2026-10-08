@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { and, desc, eq } from "drizzle-orm";
-import { compareGameResults, getDatabase, gameResults } from "@workspace/db";
+import { compareGameResults, getDatabase, getWorkerDatabase, gameResults } from "@workspace/db";
 import { validateResult, type ResultInput } from "../gameResultValidation";
 
 type Bindings = {
@@ -25,7 +25,7 @@ router.post("/game-results", async (c) => {
   if (!connectionString) return c.json({ error: "Result storage is not configured." }, 503);
 
   try {
-    const db = getDatabase(connectionString);
+    const db = c.env?.HYPERDRIVE ? (await getWorkerDatabase(connectionString)).db : getDatabase(connectionString);
     const [current] = await db.insert(gameResults).values({
       userId: input.userId,
       gameType: input.gameType,

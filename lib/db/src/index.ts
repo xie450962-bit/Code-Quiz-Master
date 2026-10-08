@@ -7,6 +7,13 @@ const { Pool } = pg;
 
 const pools = new Map<string, PgPool>();
 
+/** Create a request-scoped database client for Cloudflare Workers/Hyperdrive. */
+export async function getWorkerDatabase(connectionString: string) {
+  const client = new pg.Client({ connectionString });
+  await client.connect();
+  return { db: drizzle(client, { schema }), client };
+}
+
 export function getDatabase(connectionString: string) {
   let pool = pools.get(connectionString);
   if (!pool) {

@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { and, asc, eq, sql } from "drizzle-orm";
-import { getDatabase, quizQuestions, typingPrompts } from "@workspace/db";
+import { getDatabase, getWorkerDatabase, quizQuestions, typingPrompts } from "@workspace/db";
 
 type Bindings = { DATABASE_URL?: string; HYPERDRIVE?: { connectionString: string } };
 const router = new Hono<{ Bindings: Bindings }>();
@@ -13,7 +13,7 @@ router.get("/game-content/options", async (c) => {
   const url = databaseUrl(c);
   if (!url) return c.json({ error: "Content storage is not configured." }, 503);
   try {
-    const db = getDatabase(url);
+    const db = c.env?.HYPERDRIVE ? (await getWorkerDatabase(url)).db : getDatabase(url);
     const [typing, quizzes] = await Promise.all([
       db.selectDistinct({ category: typingPrompts.category }).from(typingPrompts).where(eq(typingPrompts.active, 1)).orderBy(asc(typingPrompts.category)),
       db.selectDistinct({ gameType: quizQuestions.gameType, difficulty: quizQuestions.difficulty }).from(quizQuestions).where(eq(quizQuestions.active, 1)).orderBy(asc(quizQuestions.gameType), asc(quizQuestions.difficulty)),
@@ -31,7 +31,8 @@ router.get("/game-content/typing", async (c) => {
   const url = databaseUrl(c);
   if (!url) return c.json({ error: "Content storage is not configured." }, 503);
   try {
-    const prompts = await getDatabase(url).select({ id: typingPrompts.id, category: typingPrompts.category, text: typingPrompts.text })
+    const db = c.env?.HYPERDRIVE ? (await getWorkerDatabase(url)).db : getDatabase(url);
+    const prompts = await db.select({ id: typingPrompts.id, category: typingPrompts.category, text: typingPrompts.text })
       .from(typingPrompts).where(and(eq(typingPrompts.category, category), eq(typingPrompts.active, 1))).orderBy(sql`random()`).limit(20);
     if (!prompts.length) return c.json({ error: "No typing prompts found for this category." }, 404);
     return c.json({ prompts });
@@ -48,7 +49,8 @@ router.get("/game-content/quizzes", async (c) => {
   const url = databaseUrl(c);
   if (!url) return c.json({ error: "Content storage is not configured." }, 503);
   try {
-    const questions = await getDatabase(url).select({ id: quizQuestions.id, question: quizQuestions.question, options: quizQuestions.options, correct: quizQuestions.correct })
+    const db = c.env?.HYPERDRIVE ? (await getWorkerDatabase(url)).db : getDatabase(url);
+    const questions = await db.select({ id: quizQuestions.id, question: quizQuestions.question, options: quizQuestions.options, correct: quizQuestions.correct })
       .from(quizQuestions).where(and(eq(quizQuestions.gameType, gameType!), eq(quizQuestions.difficulty, difficulty), eq(quizQuestions.active, 1)))
       .orderBy(sql`random()`).limit(10);
     if (!questions.length) return c.json({ error: "No quiz questions found for this selection." }, 404);
