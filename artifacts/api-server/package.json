@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "test:game-results": "node --experimental-strip-types --test src/gameResultValidation.test.ts",
-    "dev": "export NODE_ENV=development && pnpm run build && pnpm run start",
+    "dev": "node --env-file-if-exists=../../.env.local ./dev.mjs",
     "build": "node ./build.mjs",
     "start": "node --enable-source-maps ./dist/index.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit"
@@ -15,7 +15,8 @@
     "@workspace/api-zod": "workspace:*",
     "@workspace/db": "workspace:*",
     "drizzle-orm": "catalog:",
-    "hono": "^4.12.30"
+    "hono": "^4.12.30",
+    "pg": "^8.22.0"
   },
   "devDependencies": {
     "@types/cookie-parser": "^1.4.10",

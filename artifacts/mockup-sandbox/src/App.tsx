@@ -231,7 +231,6 @@ function UserSelection({ onSelect }: { onSelect: (user: User) => void }) {
             </button>
           ))}
         </div>
-        <p className="muted-note">※ デモ用のユーザー選択を使用します</p>
       </div>
     </main>
   );

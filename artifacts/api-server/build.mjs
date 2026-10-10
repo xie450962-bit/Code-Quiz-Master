@@ -23,6 +23,7 @@ async function buildAll() {
     // Externalize modules with native bindings that can't be bundled
     external: [
       "*.node",
+      "pg",
       "sharp",
       "better-sqlite3",
       "sqlite3",
