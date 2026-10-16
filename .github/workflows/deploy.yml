@@ -54,6 +54,15 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Verify frontend auth URL
+        run: |
+          if [ -z "$VITE_NEON_AUTH_URL" ]; then
+            echo "::error::GitHub Actions repository variable VITE_NEON_AUTH_URL is empty or unavailable."
+            exit 1
+          fi
+        env:
+          VITE_NEON_AUTH_URL: ${{ vars.VITE_NEON_AUTH_URL }}
+
       - name: Build frontend
         run: pnpm --filter @workspace/mockup-sandbox run build
         env:

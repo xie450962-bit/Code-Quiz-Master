@@ -968,7 +968,7 @@ function AuthenticatedApp() {
   }, []);
 
   if (!authClient) {
-    return <main className="auth-page"><section className="auth-card"><Logo /><h1>認証設定が必要です</h1><p>ルートの .env.local に VITE_NEON_AUTH_URL を設定してください。</p></section></main>;
+    return <main className="auth-page"><section className="auth-card"><Logo /><h1>認証設定が必要です</h1><p>デプロイ時の VITE_NEON_AUTH_URL 設定を確認してください。</p></section></main>;
   }
   if (loading) return <main className="auth-page"><p role="status">ログイン状態を確認しています...</p></main>;
   if (!user) return <><AuthScreen onAuthenticated={refreshSession} />{authError && <p className="auth-error auth-global-error" role="alert">{authError}</p>}</>;
