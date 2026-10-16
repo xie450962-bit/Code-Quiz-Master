@@ -1,6 +1,5 @@
 export type GameType = "typing" | "sql" | "linux";
 export type ResultInput = {
-  userId: string;
   gameType: GameType;
   wpm?: number;
   accuracy: number;
@@ -15,7 +14,6 @@ const isNumber = (value: unknown) => typeof value === "number" && Number.isFinit
 export function validateResult(value: unknown): value is ResultInput {
   if (!value || typeof value !== "object") return false;
   const body = value as Record<string, unknown>;
-  if (typeof body.userId !== "string" || !body.userId.trim()) return false;
   if (!["typing", "sql", "linux"].includes(String(body.gameType))) return false;
   if (!isNumber(body.accuracy) || body.accuracy < 0 || body.accuracy > 100) return false;
   if (!isNumber(body.score) || body.score < 0 || !Number.isInteger(body.score)) return false;

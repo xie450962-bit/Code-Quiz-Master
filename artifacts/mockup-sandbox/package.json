@@ -46,6 +46,7 @@
     "@types/node": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
+    "@neondatabase/neon-js": "0.8.0-beta",
     "@vitejs/plugin-react": "catalog:",
     "chokidar": "^4.0.3",
     "class-variance-authority": "catalog:",

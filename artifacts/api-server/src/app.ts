@@ -6,7 +6,7 @@ import router from "./routes";
 const app = new Hono().basePath("/api");
 
 app.use("*", logger());
-app.use("*", cors());
+app.use("*", cors({ allowHeaders: ["Content-Type", "Authorization"] }));
 app.route("/", router);
 
 export default app;

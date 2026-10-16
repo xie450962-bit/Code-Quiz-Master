@@ -1,0 +1,13 @@
+{
+  "name": "code-quiz-master",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "pnpm --parallel --filter @workspace/api-server --filter @workspace/mockup-sandbox dev",
+    "build": "pnpm --recursive --if-present build",
+    "typecheck": "pnpm --recursive --if-present typecheck",
+    "test": "pnpm --filter @workspace/db test && pnpm --filter @workspace/api-server test:game-results && pnpm --filter @workspace/mockup-sandbox test:typing && pnpm --filter @workspace/mockup-sandbox test:quiz",
+    "db:up": "docker compose up -d db",
+    "db:down": "docker compose stop db"
+  }
+}

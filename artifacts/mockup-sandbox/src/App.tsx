@@ -6,10 +6,12 @@ import {
   type ChangeEvent,
   type CompositionEvent,
   type ComponentType,
+  type FormEvent,
   type ReactNode,
 } from "react";
 
 import { modules as discoveredModules } from "./.generated/mockup-components";
+import { authClient, authenticatedFetch } from "./auth";
 import {
   calculateQuizResult,
   type QuizResult,
@@ -28,7 +30,6 @@ import {
 type ModuleMap = Record<string, () => Promise<Record<string, unknown>>>;
 type Game = "typing" | "sql" | "linux";
 type Screen =
-  | "user-selection"
   | "home"
   | "typing-setup"
   | "sql-setup"
@@ -43,16 +44,8 @@ type Screen =
 type User = {
   id: string;
   name: string;
-  role: string;
-  initials: string;
-  color: string;
+  email: string | null;
 };
-
-const USERS: User[] = [
-  { id: "user-yamada", name: "山田 太郎", role: "新入社員", initials: "YT", color: "blue" },
-  { id: "user-sato", name: "佐藤 花子", role: "新入社員", initials: "SH", color: "purple" },
-  { id: "user-suzuki", name: "鈴木 一郎", role: "新入社員", initials: "SI", color: "green" },
-];
 
 type StoredResult = {
   id: number;
@@ -68,6 +61,7 @@ type StoredResult = {
 };
 type ResultComparison = { current: StoredResult; previous: StoredResult | null; best: StoredResult };
 type ResultView = { comparison: ResultComparison; saveError: string | null };
+type TypingRankingRow = { userId: string; displayName: string; wpm: number | null; accuracy: number; playedAt: string };
 
 const GAMES: Array<{
   id: Game;
@@ -204,69 +198,139 @@ function Button({
   );
 }
 
-function UserSelection({ onSelect }: { onSelect: (user: User) => void }) {
+function AuthScreen({ onAuthenticated }: { onAuthenticated: () => Promise<void> }) {
+  const [isSignUp, setIsSignUp] = useState(false);
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+
+  const submit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!authClient) return;
+    setError(null);
+    setMessage(null);
+    setSubmitting(true);
+    try {
+      const result = isSignUp
+        ? await authClient.signUp.email({ name: name.trim(), email: email.trim(), password })
+        : await authClient.signIn.email({ email: email.trim(), password });
+      if (result.error) throw new Error(result.error.message);
+      await onAuthenticated();
+      setMessage("登録を受け付けました。メール確認が必要な場合は、届いた案内に従ってください。");
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "認証に失敗しました。入力内容を確認してください。");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   return (
-    <main className="selection-page">
-      <div className="selection-panel">
+    <main className="auth-page">
+      <section className="auth-card">
         <Logo />
-        <div className="selection-heading">
-          <span className="eyebrow">INTERNAL LEARNING</span>
-          <h1>誰が学習しますか？</h1>
-          <p>ユーザーを選択して、学習を始めましょう。</p>
-        </div>
-        <div className="user-list" role="list">
-          {USERS.map((user) => (
-            <button
-              className="user-card"
-              key={user.name}
-              onClick={() => onSelect(user)}
-              type="button"
-            >
-              <span className={`avatar avatar-${user.color}`}>{user.initials}</span>
-              <span className="user-card-copy">
-                <strong>{user.name}</strong>
-                <small>{user.role}</small>
-              </span>
-              <span className="arrow">→</span>
-            </button>
-          ))}
-        </div>
-      </div>
+        <span className="eyebrow">INTERNAL LEARNING</span>
+        <h1>{isSignUp ? "アカウントを作成" : "ログイン"}</h1>
+        <p>学習記録を保存するにはログインしてください。</p>
+        <form className="auth-form" onSubmit={submit}>
+          {isSignUp && <label>表示名<input autoComplete="name" value={name} onChange={(event) => setName(event.target.value)} required /></label>}
+          <label>メールアドレス<input type="email" autoComplete="email" value={email} onChange={(event) => setEmail(event.target.value)} required /></label>
+          <label>パスワード<input type="password" autoComplete={isSignUp ? "new-password" : "current-password"} value={password} onChange={(event) => setPassword(event.target.value)} required /></label>
+          {error && <p className="auth-error" role="alert">{error}</p>}
+          {message && <p className="auth-message" role="status">{message}</p>}
+          <button className="app-button app-button-primary" type="submit" disabled={submitting}>
+            {submitting ? "処理中..." : isSignUp ? "アカウントを作成" : "ログイン"}
+          </button>
+        </form>
+        <button className="auth-toggle" type="button" onClick={() => { setIsSignUp(!isSignUp); setError(null); setMessage(null); }}>
+          {isSignUp ? "すでにアカウントをお持ちの方はログイン" : "初めての方はこちらからアカウント作成"}
+        </button>
+      </section>
     </main>
   );
 }
 
 function AppHeader({
   user,
-  onChangeUser,
+  onSignOut,
 }: {
   user: User;
-  onChangeUser: () => void;
+  onSignOut: () => void;
 }) {
   return (
     <header className="app-header">
       <Logo />
-      <button className="current-user" type="button" onClick={onChangeUser}>
-        <span className={`avatar avatar-${user.color} avatar-small`}>{user.initials}</span>
+      <button className="current-user" type="button" onClick={onSignOut} aria-label={`${user.name}からログアウト`}>
+        <span className="avatar avatar-blue avatar-small">{user.name.slice(0, 2).toUpperCase()}</span>
         <span>{user.name}</span>
-        <span className="current-user-chevron">⌄</span>
+        <span className="current-user-chevron">ログアウト</span>
       </button>
     </header>
   );
 }
 
+function TypingRanking() {
+  const [rows, setRows] = useState<TypingRankingRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    authenticatedFetch("/api/typing-ranking")
+      .then(async (response) => {
+        if (!response.ok) throw new Error("ランキングを読み込めませんでした。");
+        return response.json() as Promise<TypingRankingRow[]>;
+      })
+      .then((ranking) => { if (!cancelled) setRows(ranking); })
+      .catch(() => { if (!cancelled) setError(true); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, []);
+
+  return (
+    <section className="typing-ranking" aria-labelledby="typing-ranking-title">
+      <div className="typing-ranking-heading">
+        <div>
+          <span className="eyebrow">TYPING PRACTICE</span>
+          <h2 id="typing-ranking-title">タイピングランキング</h2>
+        </div>
+        <p>正確率が高い順。同率の場合はWPMで順位を決定します。</p>
+      </div>
+      {loading ? <p className="typing-ranking-message">ランキングを読み込み中...</p>
+        : error ? <p className="typing-ranking-message" role="status">ランキングを読み込めませんでした。</p>
+          : rows.length === 0 ? <p className="typing-ranking-message">まだランキングの記録がありません。</p>
+            : (
+              <ol className="typing-ranking-list">
+                {rows.map((row, index) => {
+                  return (
+                    <li className="typing-ranking-row" key={row.userId}>
+                      <span className="typing-ranking-place">{index + 1}</span>
+                      <strong>{row.displayName}</strong>
+                      <span>正確率 <b>{row.accuracy}%</b></span>
+                      <span>WPM <b>{row.wpm ?? 0}</b></span>
+                    </li>
+                  );
+                })}
+              </ol>
+            )}
+    </section>
+  );
+}
+
 function Home({
   user,
-  onChangeUser,
+  onSignOut,
   onStart,
 }: {
   user: User;
-  onChangeUser: () => void;
+  onSignOut: () => void;
   onStart: (game: Game) => void;
 }) {
   return (
     <div className="app-shell">
-      <AppHeader user={user} onChangeUser={onChangeUser} />
+      <AppHeader user={user} onSignOut={onSignOut} />
       <main className="home-content">
         <div className="home-intro">
           <span className="eyebrow">WELCOME BACK</span>
@@ -291,6 +355,7 @@ function Home({
             </button>
           ))}
         </section>
+        <TypingRanking />
       </main>
     </div>
   );
@@ -705,9 +770,8 @@ function ResultScreen({
   );
 }
 
-function LearningApp() {
-  const [screen, setScreen] = useState<Screen>("user-selection");
-  const [user, setUser] = useState<User | null>(null);
+function LearningApp({ user, onSignOut }: { user: User; onSignOut: () => void }) {
+  const [screen, setScreen] = useState<Screen>("home");
   const [result, setResult] = useState<QuizResult | TypingResult | null>(null);
   const [resultView, setResultView] = useState<ResultView | null>(null);
   const [contentOptions, setContentOptions] = useState<GameContentOptions | null>(null);
@@ -717,6 +781,53 @@ function LearningApp() {
   const [typingPrompts, setTypingPrompts] = useState<TypingPrompt[]>([]);
   const [quizQuestions, setQuizQuestions] = useState<QuizQuestion[]>([]);
   const [activeChoice, setActiveChoice] = useState("");
+  const navigationVersion = useRef(0);
+
+  const navigate = (nextScreen: Screen, mode: "push" | "replace" = "push") => {
+    navigationVersion.current += 1;
+    const state = { screen: nextScreen };
+    if (mode === "replace") window.history.replaceState(state, "");
+    else window.history.pushState(state, "");
+    setScreen(nextScreen);
+  };
+
+  useEffect(() => {
+    window.history.replaceState(
+      { screen: "home" },
+      "",
+      window.location.href,
+    );
+
+    const handlePopState = (event: PopStateEvent) => {
+      navigationVersion.current += 1;
+      const state = event.state as { screen?: Screen } | null;
+      const previousScreen = state?.screen;
+      const isGameScreen = previousScreen === "typing" || previousScreen === "sql" || previousScreen === "linux";
+
+      setTypingPrompts([]);
+      setQuizQuestions([]);
+      setLoadingGame(false);
+
+      if (isGameScreen) {
+        const setupScreen = `${previousScreen}-setup` as Screen;
+        window.history.replaceState({ screen: setupScreen }, "");
+        setScreen(setupScreen);
+        return;
+      }
+
+      const safeScreen = previousScreen && state
+        ? previousScreen
+        : "home";
+      if (!safeScreen.endsWith("-result")) {
+        setResult(null);
+        setResultView(null);
+      }
+      setScreen(safeScreen);
+    };
+
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -731,19 +842,13 @@ function LearningApp() {
     return () => { cancelled = true; };
   }, []);
 
-  const chooseUser = (selected: User) => {
-    setUser(selected);
-    setScreen("home");
-  };
-
-  if (!user || screen === "user-selection") return <UserSelection onSelect={chooseUser} />;
-
   const startGame = async (game: Game, choice: string) => {
     setResult(null);
     setResultView(null);
     setSetupError(null);
     setLoadingGame(true);
-    setScreen(`${game}-setup` as Screen);
+    navigate(`${game}-setup` as Screen);
+    const requestVersion = navigationVersion.current;
     try {
       const query = game === "typing"
         ? `category=${encodeURIComponent(choice)}`
@@ -751,6 +856,7 @@ function LearningApp() {
       const path = game === "typing" ? "typing" : "quizzes";
       const response = await fetch(`/api/game-content/${path}?${query}`, { signal: AbortSignal.timeout(10000) });
       const data = await response.json() as { error?: string; prompts?: Array<TypingPrompt & { category?: string }>; questions?: QuizQuestion[] };
+      if (requestVersion !== navigationVersion.current) return;
       if (!response.ok) throw new Error(data.error ?? `出題APIが ${response.status} を返しました`);
       if (game === "typing") {
         const prompts = (data.prompts ?? []).map((prompt) => ({ ...prompt, genre: prompt.category ?? choice }));
@@ -761,21 +867,25 @@ function LearningApp() {
         setQuizQuestions(data.questions);
       }
       setActiveChoice(choice);
-      setScreen(game);
-    } catch (error) {
-      setSetupError(`問題を読み込めませんでした。${error instanceof Error ? ` (${error.message})` : ""}`);
-    } finally {
       setLoadingGame(false);
+      navigate(game, "push");
+    } catch (error) {
+      if (requestVersion === navigationVersion.current) {
+        setSetupError(`問題を読み込めませんでした。${error instanceof Error ? ` (${error.message})` : ""}`);
+      }
+    } finally {
+      if (requestVersion === navigationVersion.current) setLoadingGame(false);
     }
   };
   const showResult = async (game: Game, gameResult: QuizResult | TypingResult) => {
+    const requestVersion = navigationVersion.current;
     setResult(gameResult);
     const payload = game === "typing" && "wpm" in gameResult
-      ? { userId: user.id, gameType: game, wpm: gameResult.wpm, accuracy: gameResult.accuracy, errors: gameResult.mistakes, score: gameResult.score }
-      : { userId: user.id, gameType: game, accuracy: (gameResult as QuizResult).accuracy, score: (gameResult as QuizResult).correctCount, totalQuestions: (gameResult as QuizResult).totalQuestions, correctAnswers: (gameResult as QuizResult).correctCount };
+      ? { gameType: game, wpm: gameResult.wpm, accuracy: gameResult.accuracy, errors: gameResult.mistakes, score: gameResult.score }
+      : { gameType: game, accuracy: (gameResult as QuizResult).accuracy, score: (gameResult as QuizResult).correctCount, totalQuestions: (gameResult as QuizResult).totalQuestions, correctAnswers: (gameResult as QuizResult).correctCount };
     let view: ResultView;
     try {
-      const response = await fetch("/api/game-results", {
+      const response = await authenticatedFetch("/api/game-results", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -797,32 +907,85 @@ function LearningApp() {
       };
       view = { comparison: { current, previous: null, best: current }, saveError: `結果を保存できませんでした。DB/APIの設定を確認してください。(${error instanceof Error ? error.message : String(error)})` };
     }
+    if (requestVersion !== navigationVersion.current) return;
     setResultView(view);
-    setScreen((game + "-result") as Screen);
+    navigate((game + "-result") as Screen, "replace");
   };
   const resultGame = screen.endsWith("-result") ? screen.replace("-result", "") as Game : null;
 
   if (screen === "home") {
-    return <Home user={user} onChangeUser={() => setScreen("user-selection")} onStart={(game) => { setSetupError(null); setScreen(`${game}-setup` as Screen); }} />;
+    return <Home user={user} onSignOut={onSignOut} onStart={(game) => { setSetupError(null); navigate(`${game}-setup` as Screen); }} />;
   }
   if (screen.endsWith("-setup")) {
     const game = screen.replace("-setup", "") as Game;
-    return <GameSetup game={game} options={contentOptions} loading={optionsLoading || loadingGame} onStart={startGame} onHome={() => setScreen("home")} error={setupError} />;
+    return <GameSetup game={game} options={contentOptions} loading={optionsLoading || loadingGame} onStart={startGame} onHome={() => navigate("home")} error={setupError} />;
   }
-  if (screen === "typing") return <TypingScreen prompts={typingPrompts} onResult={(typingResult) => showResult("typing", typingResult)} onHome={() => setScreen("home")} />;
-  if (screen === "sql") return <QuizScreen game="sql" questions={quizQuestions} onResult={(gameResult) => showResult("sql", gameResult)} onHome={() => setScreen("home")} />;
-  if (screen === "linux") return <QuizScreen game="linux" questions={quizQuestions} onResult={(gameResult) => showResult("linux", gameResult)} onHome={() => setScreen("home")} />;
-  if (resultGame && result && resultView) return <ResultScreen game={resultGame} result={result} resultView={resultView} onAgain={() => startGame(resultGame, activeChoice)} onHome={() => setScreen("home")} />;
+  if (screen === "typing") return <TypingScreen prompts={typingPrompts} onResult={(typingResult) => showResult("typing", typingResult)} onHome={() => navigate("home")} />;
+  if (screen === "sql") return <QuizScreen game="sql" questions={quizQuestions} onResult={(gameResult) => showResult("sql", gameResult)} onHome={() => navigate("home")} />;
+  if (screen === "linux") return <QuizScreen game="linux" questions={quizQuestions} onResult={(gameResult) => showResult("linux", gameResult)} onHome={() => navigate("home")} />;
+  if (resultGame && result && resultView) return <ResultScreen game={resultGame} result={result} resultView={resultView} onAgain={() => startGame(resultGame, activeChoice)} onHome={() => navigate("home")} />;
   return null;
+}
+
+function AuthenticatedApp() {
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [authError, setAuthError] = useState<string | null>(null);
+
+  const refreshSession = async () => {
+    if (!authClient) return;
+    const { data, error } = await authClient.getSession();
+    if (error) throw new Error(error.message);
+    const authenticatedUser = data?.user;
+    setUser(authenticatedUser ? {
+      id: authenticatedUser.id,
+      name: authenticatedUser.name || authenticatedUser.email || "利用者",
+      email: authenticatedUser.email ?? null,
+    } : null);
+    setAuthError(null);
+  };
+
+  useEffect(() => {
+    if (!authClient) {
+      setLoading(false);
+      return;
+    }
+    let cancelled = false;
+    authClient.getSession()
+      .then(({ data, error }) => {
+        if (error) throw new Error(error.message);
+        if (!cancelled && data?.user) {
+          setUser({
+            id: data.user.id,
+            name: data.user.name || data.user.email || "利用者",
+            email: data.user.email ?? null,
+          });
+        }
+      })
+      .catch((error: unknown) => { if (!cancelled) setAuthError(error instanceof Error ? error.message : "ログイン状態を確認できません。"); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, []);
+
+  if (!authClient) {
+    return <main className="auth-page"><section className="auth-card"><Logo /><h1>認証設定が必要です</h1><p>ルートの .env.local に VITE_NEON_AUTH_URL を設定してください。</p></section></main>;
+  }
+  if (loading) return <main className="auth-page"><p role="status">ログイン状態を確認しています...</p></main>;
+  if (!user) return <><AuthScreen onAuthenticated={refreshSession} />{authError && <p className="auth-error auth-global-error" role="alert">{authError}</p>}</>;
+
+  const signOut = async () => {
+    const { error } = await authClient.signOut();
+    if (error) setAuthError(error.message);
+    else setUser(null);
+  };
+  return <><LearningApp user={user} onSignOut={() => { void signOut(); }} />{authError && <p className="auth-error auth-global-error" role="alert">{authError}</p>}</>;
 }
 
 function App() {
   const previewPath = getPreviewPath();
-  return previewPath ? (
-    <PreviewRenderer componentPath={previewPath} modules={discoveredModules} />
-  ) : (
-    <LearningApp />
-  );
+  return previewPath
+    ? <PreviewRenderer componentPath={previewPath} modules={discoveredModules} />
+    : <AuthenticatedApp />;
 }
 
 export default App;

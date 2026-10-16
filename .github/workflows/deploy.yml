@@ -56,6 +56,8 @@ jobs:
 
       - name: Build frontend
         run: pnpm --filter @workspace/mockup-sandbox run build
+        env:
+          VITE_NEON_AUTH_URL: ${{ vars.VITE_NEON_AUTH_URL }}
 
       - name: Deploy to Cloudflare Pages
         run: pnpm --filter @workspace/mockup-sandbox exec wrangler pages deploy dist --project-name=mockup-sandbox

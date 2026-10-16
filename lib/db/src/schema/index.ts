@@ -13,6 +13,12 @@ export const gameResults = pgTable("game_results", {
   playedAt: timestamp("played_at", { withTimezone: true }).notNull().defaultNow(),
 }, (table) => [index("game_results_user_game_played_idx").on(table.userId, table.gameType, table.playedAt)]);
 
+export const userProfiles = pgTable("user_profiles", {
+  id: text("id").primaryKey(),
+  displayName: text("display_name").notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 export type GameResultRecord = typeof gameResults.$inferSelect;
 
 export const typingPrompts = pgTable("typing_prompts", {
