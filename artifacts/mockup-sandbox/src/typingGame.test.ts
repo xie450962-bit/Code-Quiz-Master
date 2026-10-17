@@ -75,16 +75,16 @@ test("deleting or replacing already accepted text does not move progress", () =>
 
 test("remaining time uses the elapsed clock and clamps at zero", () => {
   assert.equal(getRemainingSeconds(1_000, 1_000), TYPING_DURATION_SECONDS);
-  assert.equal(getRemainingSeconds(1_000, 2_000), 179);
-  assert.equal(getRemainingSeconds(1_000, 180_999), 1);
-  assert.equal(getRemainingSeconds(1_000, 181_000), 0);
+  assert.equal(getRemainingSeconds(1_000, 2_000), 29);
+  assert.equal(getRemainingSeconds(1_000, 30_999), 1);
+  assert.equal(getRemainingSeconds(1_000, 31_000), 0);
   assert.equal(getRemainingSeconds(1_000, 200_000), 0);
   assert.equal(getRemainingSeconds(2_000, 1_000), TYPING_DURATION_SECONDS);
 });
 
 test("remaining time is formatted as minutes and seconds", () => {
-  assert.equal(formatRemainingTime(180), "3:00");
-  assert.equal(formatRemainingTime(179), "2:59");
+  assert.equal(formatRemainingTime(30), "0:30");
+  assert.equal(formatRemainingTime(29), "0:29");
   assert.equal(formatRemainingTime(1), "0:01");
   assert.equal(formatRemainingTime(0), "0:00");
 });

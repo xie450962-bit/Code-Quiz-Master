@@ -891,9 +891,25 @@ function LearningApp({ user, onSignOut }: { user: User; onSignOut: () => void })
         body: JSON.stringify(payload),
         signal: AbortSignal.timeout(10000),
       });
-      if (!response.ok) throw new Error(`保存APIが ${response.status} を返しました`);
+      if (!response.ok) {
+        const responseBody = (await response.text()).slice(0, 500);
+        console.error("[game-results] Save API returned an error", {
+          endpoint: "/api/game-results",
+          method: "POST",
+          status: response.status,
+          responseBody,
+          at: new Date().toISOString(),
+        });
+        throw new Error(`保存APIが ${response.status} を返しました${responseBody ? `: ${responseBody}` : ""}`);
+      }
       view = { comparison: await response.json() as ResultComparison, saveError: null };
     } catch (error) {
+      console.error("[game-results] Result save failed", {
+        endpoint: "/api/game-results",
+        method: "POST",
+        at: new Date().toISOString(),
+        error: error instanceof Error ? { name: error.name, message: error.message } : String(error),
+      });
       const now = new Date().toISOString();
       const current: StoredResult = {
         id: 0, userId: user.id, gameType: game,

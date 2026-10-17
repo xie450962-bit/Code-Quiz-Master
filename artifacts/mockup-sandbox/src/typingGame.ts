@@ -1,4 +1,4 @@
-export const TYPING_DURATION_SECONDS = 180;
+export const TYPING_DURATION_SECONDS = 30;
 
 export type TypingGenre = string;
 
