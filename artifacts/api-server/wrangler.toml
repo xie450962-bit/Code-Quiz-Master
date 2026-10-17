@@ -6,6 +6,20 @@ compatibility_flags = ["nodejs_compat"]
 [vars]
 NEON_AUTH_BASE_URL = "https://ep-restless-hat-b3sw48ln.neonauth.c-4.ap-southeast-1.aws.neon.tech/neondb/auth"
 
+[observability.logs]
+enabled = true
+head_sampling_rate = 1
+invocation_logs = true
+persist = true
+
+[observability.traces]
+enabled = false
+head_sampling_rate = 1
+persist = true
+
+[observability.issues]
+enabled = false
+
 [[hyperdrive]]
 binding = "HYPERDRIVE"
 id = "fd1affaf900745a3a1ad364944f26d09"

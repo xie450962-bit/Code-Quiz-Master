@@ -14,6 +14,25 @@ type Variables = { authUser: { id: string; name?: string; email?: string } };
 const router = new Hono<{ Bindings: Bindings; Variables: Variables }>();
 const jwksByUrl = new Map<string, ReturnType<typeof createRemoteJWKSet>>();
 
+function describeDatabaseError(error: unknown) {
+  const errors: Array<Record<string, unknown>> = [];
+  const seen = new Set<unknown>();
+  let current: unknown = error;
+
+  while (current && typeof current === "object" && !seen.has(current) && errors.length < 5) {
+    seen.add(current);
+    const value = current as Record<string, unknown>;
+    const details: Record<string, unknown> = {};
+    for (const key of ["name", "message", "code", "detail", "hint", "schema", "table", "column", "constraint", "routine"]) {
+      if (typeof value[key] === "string" || typeof value[key] === "number") details[key] = value[key];
+    }
+    errors.push(details);
+    current = value.cause;
+  }
+
+  return errors;
+}
+
 function getJwks(authBaseUrl: string) {
   const jwksUrl = `${authBaseUrl.replace(/\/+$/, "")}/.well-known/jwks.json`;
   let jwks = jwksByUrl.get(jwksUrl);
@@ -113,7 +132,7 @@ router.post("/game-results", async (c) => {
     const { previous, best } = compareGameResults(history, current);
     return c.json({ current, previous, best });
   } catch (error) {
-    console.error("Could not save game result", error);
+    console.error("Could not save game result", { databaseErrors: describeDatabaseError(error) });
     return c.json({ error: "Could not save game result." }, 500);
   }
 });
