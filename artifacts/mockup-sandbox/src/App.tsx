@@ -198,7 +198,7 @@ function Button({
   );
 }
 
-function AuthScreen({ onAuthenticated }: { onAuthenticated: () => Promise<void> }) {
+function AuthScreen({ onAuthenticated }: { onAuthenticated: () => Promise<boolean> }) {
   const [isSignUp, setIsSignUp] = useState(false);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -218,8 +218,12 @@ function AuthScreen({ onAuthenticated }: { onAuthenticated: () => Promise<void> 
         ? await authClient.signUp.email({ name: name.trim(), email: email.trim(), password })
         : await authClient.signIn.email({ email: email.trim(), password });
       if (result.error) throw new Error(result.error.message);
-      await onAuthenticated();
-      setMessage("登録を受け付けました。メール確認が必要な場合は、届いた案内に従ってください。");
+      const hasSession = await onAuthenticated();
+      if (!hasSession) {
+        setMessage(isSignUp
+          ? "登録を受け付けました。メール確認が必要な場合は、届いた案内に従ってください。"
+          : "ログインできましたが、ログイン状態を確認できませんでした。メール確認が必要な場合は、届いた案内を確認してください。再度ログインをお試しください。");
+      }
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "認証に失敗しました。入力内容を確認してください。");
     } finally {
@@ -949,7 +953,7 @@ function AuthenticatedApp() {
   const [authError, setAuthError] = useState<string | null>(null);
 
   const refreshSession = async () => {
-    if (!authClient) return;
+    if (!authClient) return false;
     const { data, error } = await authClient.getSession();
     if (error) throw new Error(error.message);
     const authenticatedUser = data?.user;
@@ -959,6 +963,7 @@ function AuthenticatedApp() {
       email: authenticatedUser.email ?? null,
     } : null);
     setAuthError(null);
+    return Boolean(authenticatedUser);
   };
 
   useEffect(() => {
